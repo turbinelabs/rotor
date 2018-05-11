@@ -19,7 +19,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/turbinelabs/rotor)](https://goreportcard.com/report/github.com/turbinelabs/rotor)
 [![codecov](https://codecov.io/gh/turbinelabs/rotor/branch/master/graph/badge.svg)](https://codecov.io/gh/turbinelabs/rotor)
 
-Rotor project is a fast, lightweight bridge between your service discovery and
+Rotor is a fast, lightweight bridge between your service discovery and
 [Envoy’s](https://envoyproxy.github.io) configuration APIs. It groups your
 infrastructure into Envoy clusters and defines simple routes for each service.
 Instances are gathered directly from your service discovery registry, and
@@ -27,7 +27,7 @@ clusters are created by grouping together instances under a common tag or label.
 This instance and cluster information is served via Envoy’s endpoint and cluster
 discovery services, CDS and EDS.
 
-Rotor also sets up a Envoy’s routing and listeners (RDS and LDS) to serve
+Rotor also sets up Envoy’s routing and listeners (RDS and LDS) to serve
 these clusters and send stats to common backends like Prometheus, statsd,
 dogstatsd, and Wavefront.
 
@@ -101,7 +101,7 @@ depends on your service discovery registry. To see the flags available for your
 SD, run:
 
 ```console
-docker run -e "TBNCOLLECT_CMD=<platform>" -e "TBNCOLLECT_HELP=true" turbinelabs/rotor:0.15.1
+docker run -e "ROTOR_CMD=<platform>" -e "ROTOR_HELP=true" turbinelabs/rotor:0.15.1
 ```
 
 where `<platform>` is one of: aws, ecs, consul, file, kubernetes, or marathon.
@@ -126,9 +126,9 @@ Consul requires the datacenter and the host/port of your Consul server.
 
 ```console
 $ docker run -d \
-  -e "TBNCOLLECT_CMD=consul" \
-  -e "TBNCOLLECT_CONSUL_DC=<your datacenter>" \
-  -e "TBNCOLLECT_CONSUL_HOSTPORT=<consul ip address>:8500" \
+  -e "ROTOR_CMD=consul" \
+  -e "ROTOR_CONSUL_DC=<your datacenter>" \
+  -e "ROTOR_CONSUL_HOSTPORT=<consul ip address>:8500" \
 turbinelabs/rotor:0.15.1
 ```
 
@@ -140,11 +140,11 @@ Rotor can collect labels from the AWS API on EC2 instances.
 
 ```console
 $ docker run -d \
--e 'TBNCOLLECT_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
--e 'TBNCOLLECT_AWS_AWS_REGION=<your aws region>' \
--e 'TBNCOLLECT_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
--e 'TBNCOLLECT_AWS_VPC_ID=<your vpc id>' \
--e 'TBNCOLLECT_CMD=aws' \
+-e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
+-e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
+-e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
+-e 'ROTOR_AWS_VPC_ID=<your vpc id>' \
+-e 'ROTOR_CMD=aws' \
 -p 50000:50000 \
 turbinelabs/rotor:0.15.1
 ```
@@ -165,10 +165,10 @@ ECS integration uses the AWS API, similar to EC2.
 
 ```console
 $ docker run -d \
--e 'TBNCOLLECT_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
--e 'TBNCOLLECT_AWS_AWS_REGION=<your aws region>' \
--e 'TBNCOLLECT_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
--e 'TBNCOLLECT_CMD=ecs \
+-e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
+-e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
+-e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
+-e 'ROTOR_CMD=ecs \
 -p 50000:50000 \
 turbinelabs/rotor:0.15.1
 ```
@@ -202,10 +202,10 @@ Rotor runs as an app inside DC/OS. Save this as `rotor.json`:
     }
   },
   "env": {
-   "TBNCOLLECT_CMD": "marathon",
-    "TBNCOLLECT_MARATHON_DCOS_ACS_TOKEN": "<your dc/os access token>",
-    "TBNCOLLECT_MARATHON_DCOS_URL": "<your dc/os admin URL>",
-    "TBNCOLLECT_MARATHON_DCOS_INSECURE": "<true if admin URL is not HTTPS>"
+   "ROTOR_CMD": "marathon",
+    "ROTOR_MARATHON_DCOS_ACS_TOKEN": "<your dc/os access token>",
+    "ROTOR_MARATHON_DCOS_URL": "<your dc/os admin URL>",
+    "ROTOR_MARATHON_DCOS_INSECURE": "<true if admin URL is not HTTPS>"
   },
   "healthChecks": []
 }
@@ -225,7 +225,7 @@ Rotor can read from flat files that define clusters and instances.
 
 ```console
 $ docker run -d \
--e 'TBNCOLLECT_CMD=file \
+-e 'ROTOR_CMD=file \
 -p 50000:50000 \
 turbinelabs/rotor:0.15.1 /path/to/file/in/container
 ```
