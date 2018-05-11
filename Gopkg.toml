@@ -1,0 +1,55 @@
+ignored = [
+  "github.com/turbinelabs/api*",
+  "github.com/turbinelabs/cache",
+  "github.com/turbinelabs/cli*",
+  "github.com/turbinelabs/codec",
+  "github.com/turbinelabs/nonstdlib*",
+  "github.com/turbinelabs/stats",
+  "github.com/turbinelabs/test*",
+  "github.com/golang/mock/*",
+]
+
+[prune]
+  go-tests = true
+  unused-packages = true
+
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  revision = "v1.13.42"
+
+[[constraint]]
+  name = "github.com/BurntSushi/toml"
+  revision = "v0.3.0"
+
+[[constraint]]
+  name = "github.com/envoyproxy/go-control-plane"
+  revision = "v0.2"
+
+[[constraint]]
+  name = "github.com/gambol99/go-marathon"
+  revision = "v0.7.1"
+
+[[constraint]]
+  name = "github.com/gogo/protobuf"
+  revision = "v1.0.0"
+
+[[constraint]]
+  name = "github.com/hashicorp/consul"
+  revision = "v1.0.7"
+
+[[constraint]]
+  name = "gopkg.in/fsnotify.v1"
+  revision = "v1.4.7"
+  source = "https://github.com/fsnotify/fsnotify.git"
+
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "v7.0.0"
+
+[[constraint]]
+  name = "k8s.io/apimachinery"
+  revision = "kubernetes-1.10.0"
+
+[[constraint]]
+  name = "k8s.io/api"
+  revision = "kubernetes-1.10.0"
