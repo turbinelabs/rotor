@@ -40,7 +40,7 @@ func TestFileRunnerInvalidUpdaterFlags(t *testing.T) {
 	mockUpdaterFlags.EXPECT().Validate().Return(err)
 
 	cmdErr := fr.Run(FileCmd(mockUpdaterFlags), nil)
-	assert.Equal(t, cmdErr.Message, fmt.Sprintf("envoy-cds-v1-file: %s", err))
+	assert.Equal(t, cmdErr.Message, fmt.Sprintf("exp-envoy-cds-v1-file: %s", err))
 }
 
 func TestFileRunnerInvalidCodecFlags(t *testing.T) {
@@ -57,7 +57,7 @@ func TestFileRunnerInvalidCodecFlags(t *testing.T) {
 	mockCodecFlags.EXPECT().Validate().Return(err)
 
 	cmdErr := fr.Run(FileCmd(mockUpdaterFlags), nil)
-	assert.Equal(t, cmdErr.Message, fmt.Sprintf("envoy-cds-v1-file: %s", err))
+	assert.Equal(t, cmdErr.Message, fmt.Sprintf("exp-envoy-cds-v1-file: %s", err))
 }
 
 func TestFileRunnerBadUpdater(t *testing.T) {
@@ -75,5 +75,5 @@ func TestFileRunnerBadUpdater(t *testing.T) {
 	mockUpdaterFlags.EXPECT().Make().Return(nil, err)
 
 	cmdErr := fr.Run(FileCmd(mockUpdaterFlags), []string{"/path/to/file"})
-	assert.Equal(t, cmdErr.Message, fmt.Sprintf("envoy-cds-v1-file: %s", err))
+	assert.Equal(t, cmdErr.Message, fmt.Sprintf("exp-envoy-cds-v1-file: %s", err))
 }

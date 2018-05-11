@@ -51,7 +51,7 @@ func TestRestRunnerInvalidAddr(t *testing.T) {
 	mockUpdaterFlags.EXPECT().Make().Return(mockUpdater, nil)
 
 	cmdErr := rr.Run(RESTCmd(mockUpdaterFlags), nil)
-	msg := "envoy-cds-v1: parse http://not a domain:99: invalid character \" \" in host name"
+	msg := "exp-envoy-cds-v1: parse http://not a domain:99: invalid character \" \" in host name"
 	assert.Equal(t, cmdErr.Message, msg)
 }
 
@@ -72,7 +72,7 @@ func TestRestRunnerInvalidSdsAddr(t *testing.T) {
 	mockUpdaterFlags.EXPECT().Make().Return(mockUpdater, nil)
 
 	cmdErr := rr.Run(RESTCmd(mockUpdaterFlags), nil)
-	msg := "envoy-cds-v1: parse http://not a domain:99: invalid character \" \" in host name"
+	msg := "exp-envoy-cds-v1: parse http://not a domain:99: invalid character \" \" in host name"
 	assert.Equal(t, cmdErr.Message, msg)
 }
 
@@ -93,7 +93,7 @@ func TestRestRunnerBadUpdater(t *testing.T) {
 	mockUpdaterFlags.EXPECT().Make().Return(nil, err)
 
 	cmdErr := rr.Run(RESTCmd(mockUpdaterFlags), nil)
-	assert.Equal(t, cmdErr.Message, fmt.Sprintf("envoy-cds-v1: %s", err))
+	assert.Equal(t, cmdErr.Message, fmt.Sprintf("exp-envoy-cds-v1: %s", err))
 }
 
 func TestRestRunnerBadClustersNodes(t *testing.T) {
@@ -114,7 +114,7 @@ func TestRestRunnerBadClustersNodes(t *testing.T) {
 	mockUpdaterFlags.EXPECT().Validate().Return(nil)
 	mockUpdaterFlags.EXPECT().Make().Return(mockUpdater, nil)
 	cmdErr := rr.Run(RESTCmd(mockUpdaterFlags), nil)
-	em := "envoy-cds-v1: clustersNodes must be of the form \"<cluster>:<node>\" or " +
+	em := "exp-envoy-cds-v1: clustersNodes must be of the form \"<cluster>:<node>\" or " +
 		"\"<cluster>\", but was nobueno::blerp"
 	assert.Equal(t, cmdErr.Message, em)
 }

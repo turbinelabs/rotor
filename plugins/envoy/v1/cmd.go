@@ -68,8 +68,8 @@ clusters in a Zone.
 // envoy CDS server
 func RESTCmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 	cmd := &command.Cmd{
-		Name:        "envoy-cds-v1",
-		Summary:     "envoy CDS v1 collector",
+		Name:        "exp-envoy-cds-v1",
+		Summary:     "envoy CDS v1 collector [EXPERIMENTAL]",
 		Usage:       "[OPTIONS]",
 		Description: envoyV1RestDescription,
 	}
@@ -109,8 +109,8 @@ func RESTCmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 // envoy CDS defined in a JSON or YAML file.
 func FileCmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 	cmd := &command.Cmd{
-		Name:        "envoy-cds-v1-file",
-		Summary:     "envoy CDS v1 file collector",
+		Name:        "exp-envoy-cds-v1-file",
+		Summary:     "envoy CDS v1 file collector [EXPERIMENTAL]",
 		Usage:       "[OPTIONS] file",
 		Description: envoyV1FileDescription,
 	}
