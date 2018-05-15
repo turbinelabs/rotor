@@ -17,12 +17,10 @@ limitations under the License.
 // Package constants contains constants shared accross plugin packages.
 package constants
 
-const (
-	// DefaultClusterLabelName is the default name for a service discovery label that
-	// defines a cluster monitored by rotor.
-	DefaultClusterLabelName = "tbn_cluster"
+// DefaultClusterLabelName is the default name for a service discovery label
+// that defines a cluster monitored by rotor.
+const DefaultClusterLabelName = "tbn_cluster"
 
-	// TbnPublicVersion is the current version of all Turbine Labs open-source
-	// software and artifacts
-	TbnPublicVersion = "0.15.1"
-)
+// TbnPublicVersion is the current version of all Turbine Labs open-source
+// software and artifacts.
+const TbnPublicVersion = "0.15.1"
