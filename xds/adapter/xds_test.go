@@ -18,6 +18,7 @@ package adapter
 
 import (
 	"context"
+	"syscall"
 	"testing"
 	"time"
 
@@ -73,6 +74,7 @@ func TestXDSLifecycle(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStats := stats.NewMockStats(ctrl)
+	mockStats.EXPECT().Close().Return(nil)
 
 	xds, err := NewXDS(
 		":0",
@@ -85,8 +87,8 @@ func TestXDSLifecycle(t *testing.T) {
 
 	runError := make(chan error, 1)
 	go func() {
+		defer close(runError)
 		runError <- xds.Run()
-		close(runError)
 	}()
 
 	resolvedAddr := xds.Addr()
@@ -137,6 +139,7 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 		) {
 			close(statsSent)
 		})
+	mockStats.EXPECT().Close().Return(nil)
 
 	xds, err := NewXDS(
 		":0",
@@ -149,8 +152,8 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 
 	runError := make(chan error, 1)
 	go func() {
+		defer close(runError)
 		runError <- xds.Run()
-		close(runError)
 	}()
 
 	resolvedAddr := xds.Addr()
@@ -226,6 +229,54 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 	assert.Nil(t, conn.Close())
 
 	xds.Stop()
+
+	// Ignore the error Serve (and therefore Run) returns on Stop.
+	<-runError
+}
+
+func TestXDSLifecycleWithSignal(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockStats := stats.NewMockStats(ctrl)
+	mockStats.EXPECT().Close().Return(nil)
+
+	x, err := NewXDS(
+		":0",
+		poller.NewNopRegistrar(),
+		"",
+		defaultDefaultTimeout,
+		mockStats,
+	)
+	assert.Nil(t, err)
+
+	runError := make(chan error, 1)
+	go func() {
+		defer close(runError)
+		runError <- x.Run()
+	}()
+
+	resolvedAddr := x.Addr()
+	assert.NotEqual(t, resolvedAddr, "")
+	_, port, err := tbnstrings.SplitHostPort(resolvedAddr)
+	assert.Nil(t, err)
+	assert.NotEqual(t, port, 0)
+
+	// Subsequent calls do not block
+	assert.Equal(t, x.Addr(), resolvedAddr)
+
+	assert.ChannelEmpty(t, runError)
+
+	conn, err := grpc.Dial(resolvedAddr, grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+
+	client := envoyapi.NewListenerDiscoveryServiceClient(conn)
+	client.FetchListeners(context.TODO(), &envoyapi.DiscoveryRequest{})
+
+	assert.Nil(t, conn.Close())
+
+	// simulated signal
+	x.(*xds).signalChan <- syscall.SIGINT
 
 	// Ignore the error Serve (and therefore Run) returns on Stop.
 	<-runError

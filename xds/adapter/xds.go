@@ -17,7 +17,11 @@ limitations under the License.
 package adapter
 
 import (
+	"io"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
@@ -42,8 +46,8 @@ type XDS interface {
 	// via Stop().
 	Run() error
 
-	// Stop terminates a running XDS server. It does not wait for
-	// existing connections or requests to complete.
+	// Stop terminates a running XDS server. It attempts a graceful stop by
+	// preventing new connections and waiting until pending RPCs are complete.
 	Stop()
 
 	// Addr retrieves the XDS server's listener address. Suitable for
@@ -121,6 +125,7 @@ func NewXDS(
 		server:           server.NewServer(snapshotCache, consumer),
 		logServer:        als,
 		resolvedAddrChan: make(chan string, 1),
+		closers:          []io.Closer{stats},
 	}, nil
 }
 
@@ -133,9 +138,22 @@ type xds struct {
 	resolvedAddr     string
 	resolvedAddrChan chan string
 	gRPCServer       *grpc.Server
+	closers          []io.Closer
+	signalChan       chan os.Signal
 }
 
 func (x *xds) Run() error {
+	defer func() {
+		for _, c := range x.closers {
+			if err := c.Close(); err != nil {
+				console.Error().Println("close error:", err)
+			}
+		}
+	}()
+
+	signalCleanup := x.configureSignalHandler()
+	defer signalCleanup()
+
 	lis, err := net.Listen("tcp", x.addr)
 	if err != nil {
 		return err
@@ -183,6 +201,27 @@ func (x *xds) Addr() string {
 
 func (x *xds) Stop() {
 	if x.gRPCServer != nil {
-		x.gRPCServer.Stop()
+		x.gRPCServer.GracefulStop()
+	}
+}
+
+func (x *xds) configureSignalHandler() func() {
+	x.signalChan = make(chan os.Signal, 1)
+	signal.Notify(x.signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		for {
+			sig, ok := <-x.signalChan
+			if !ok {
+				return
+			}
+			console.Info().Printf("caught %s, shutting down", sig.String())
+			x.Stop()
+		}
+	}()
+
+	return func() {
+		signal.Stop(x.signalChan)
+		close(x.signalChan)
 	}
 }

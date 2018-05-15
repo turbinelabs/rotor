@@ -17,6 +17,7 @@ limitations under the License.
 package adapter
 
 import (
+	"io"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -66,4 +67,5 @@ func TestXDSFromFlagsMake(t *testing.T) {
 	assert.Equal(t, xImpl.addr, defaultAddr)
 	assert.NonNil(t, xImpl.server)
 	assert.NonNil(t, xImpl.logServer)
+	assert.ArrayEqual(t, xImpl.closers, []io.Closer{mockStats})
 }
