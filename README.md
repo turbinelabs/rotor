@@ -11,6 +11,8 @@
 [//]: # ( implied. See the License for the specific language governing        )
 [//]: # ( permissions and limitations under the License.                      )
 
+![Rotor Logo](rotor.png)
+
 # turbinelabs/rotor
 
 [![Apache 2.0](https://img.shields.io/badge/license-apache%202.0-blue.svg)](LICENSE)
