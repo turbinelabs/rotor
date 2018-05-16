@@ -23,7 +23,7 @@ import (
 
 // FixtureHash is the expected result calling TerribleHash() on the *Objects
 // produced by MkFixtureObjects()
-const FixtureHash = "mXMcy6uaBK3HJTW+CuRh5g=="
+const FixtureHash = "3Yo1B44poP/tq8OeI8GKdw=="
 
 // MkFixtureObjects produces a *Objects that exercises most of the surface area
 // of the API, suitable for testing.
