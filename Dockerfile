@@ -23,6 +23,7 @@ RUN mv $GOPATH/bin/rotor /usr/local/bin/rotor
 
 # cleanup go
 RUN rm -rf /usr/local/go
+RUN rm -rf /go/src
 
 # cleanup git
 RUN DEBIAN_FRONTEND="noninteractive" apt-get remove -y git
