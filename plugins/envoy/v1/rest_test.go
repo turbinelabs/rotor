@@ -114,8 +114,8 @@ func TestRestRunnerBadClustersNodes(t *testing.T) {
 	mockUpdaterFlags.EXPECT().Validate().Return(nil)
 	mockUpdaterFlags.EXPECT().Make().Return(mockUpdater, nil)
 	cmdErr := rr.Run(RESTCmd(mockUpdaterFlags), nil)
-	em := "exp-envoy-cds-v1: clustersNodes must be of the form \"<cluster>:<node>\" or " +
-		"\"<cluster>\", but was nobueno::blerp"
+	em := `exp-envoy-cds-v1: clusters-nodes must be of the form "<cluster>:<node>" or ` +
+		`"<cluster>", but was nobueno::blerp`
 	assert.Equal(t, cmdErr.Message, em)
 }
 
@@ -239,4 +239,59 @@ func TestRestCollectorNon200ResponseError(t *testing.T) {
 	assert.NonNil(t, err)
 	assert.Equal(t, clientFnCnt, 1)
 	assert.Equal(t, cdsParserCnt, 0)
+}
+
+func TestRestCollectorGetAllClusters(t *testing.T) {
+	clusters1 := api.Clusters{
+		{
+			Name: "statsd",
+			Instances: api.Instances{{
+				Host: "127.0.0.1",
+				Port: 8125,
+			}},
+		},
+		{
+			Name: "backhaul",
+			Instances: api.Instances{{
+				Host: "front-proxy.yourcompany.net",
+				Port: 9400,
+			}},
+		},
+	}
+	clusters2 := api.Clusters{
+		{
+			Name: "lightstep_saas",
+			Instances: api.Instances{{
+				Host: "collector-grpc.lightstep.com",
+				Port: 443,
+			}},
+		},
+	}
+
+	expectedClusters := make(chan api.Clusters, 2)
+	expectedClusters <- clusters1
+	expectedClusters <- clusters2
+
+	rc := &restCollector{
+		clientFn: func(string) (*http.Response, error) {
+			return &http.Response{
+				Status:     "200 OK",
+				StatusCode: http.StatusOK,
+				Body:       ioutil.NopCloser(bytes.NewBufferString("{}")),
+			}, nil
+		},
+		parserFn: func(io.Reader) ([]api.Cluster, error) {
+			select {
+			case c := <-expectedClusters:
+				return c, nil
+			default:
+				return nil, errors.New("ran out of clusters")
+			}
+		},
+		cdsRoutes: []string{"this-one", "that-one"},
+	}
+
+	clusters, err := rc.getAllClusters()
+	assert.Nil(t, err)
+	assert.HasSameElements(t, clusters, append(clusters1, clusters2...))
 }

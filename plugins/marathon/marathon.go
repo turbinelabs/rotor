@@ -19,11 +19,11 @@ limitations under the License.
 package marathon
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/cli/command"
@@ -166,8 +166,10 @@ func (r *marathonRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		client: mclient,
 		filter: filter,
 	}
-	collector.updateLoop(u)
-	return command.NoError() // unreachable
+
+	updater.Loop(u, collector.getClusters)
+
+	return command.NoError()
 }
 
 type marathonFilter func(
@@ -241,30 +243,31 @@ type marathonCollector struct {
 	filter marathonFilter
 }
 
-func (m *marathonCollector) updateLoop(u updater.Updater) {
-	deadline := time.NewTimer(0 * time.Second)
-	for {
-		<-deadline.C
-		groups, err := m.client.Groups()
-		if err != nil {
-			console.Error().Println("Error fetching groups: ", err.Error())
-		} else {
-			m.update(groups, m.fetchTasks, u)
-		}
-		deadline.Reset(u.Delay())
+func (m *marathonCollector) getClusters() ([]api.Cluster, error) {
+	groups, err := m.client.Groups()
+	if err != nil {
+		return nil, fmt.Errorf("Error fetching groups: %s", err.Error())
 	}
-}
 
-type marathonTaskFetcher func(appID string) (*marathon.Tasks, error)
+	clusters := map[string]*api.Cluster{}
 
-func (m *marathonCollector) fetchTasks(appID string) (*marathon.Tasks, error) {
-	return m.client.Tasks(appID)
+	m.collect(clusters, groups.Groups)
+
+	proposed := make(api.Clusters, 0, len(clusters))
+	for _, cluster := range clusters {
+		proposed = append(proposed, *cluster)
+	}
+
+	if len(proposed) == 0 {
+		return nil, errors.New("no clusters found, skipping update")
+	}
+
+	return proposed, nil
 }
 
 func (m *marathonCollector) collect(
 	clusters map[string]*api.Cluster,
 	groups []*marathon.Group,
-	fetcher marathonTaskFetcher,
 ) {
 	if len(groups) == 0 {
 		return
@@ -287,7 +290,7 @@ func (m *marathonCollector) collect(
 		}
 
 		if len(group.Groups) > 0 {
-			m.collect(clusters, group.Groups, fetcher)
+			m.collect(clusters, group.Groups)
 		}
 
 		if !(groupIsChildOfPrefix || groupIsPrefix) {
@@ -295,7 +298,7 @@ func (m *marathonCollector) collect(
 		}
 
 		for _, app := range group.Apps {
-			tasks, err := fetcher(app.ID)
+			tasks, err := m.client.Tasks(app.ID)
 			if err != nil {
 				console.Error().Printf("Failed to fetch tasks for app '%s'", app.ID)
 				continue
@@ -305,25 +308,6 @@ func (m *marathonCollector) collect(
 				console.Error().Println("Processing", app.ID, "failed:", err.Error())
 			}
 		}
-	}
-}
-
-// update cycles through groups and updates those groups' apps.
-func (m *marathonCollector) update(
-	groups *marathon.Groups,
-	fetcher marathonTaskFetcher,
-	u updater.Updater,
-) {
-	clusters := map[string]*api.Cluster{}
-	m.collect(clusters, groups.Groups, fetcher)
-
-	proposed := make(api.Clusters, 0, len(clusters))
-	for _, cluster := range clusters {
-		proposed = append(proposed, *cluster)
-	}
-
-	if len(proposed) > 0 {
-		u.Replace(proposed)
 	}
 }
 

@@ -79,11 +79,23 @@ func (mr *MockPollerMockRecorder) Poll() *gomock.Call {
 }
 
 // PollLoop mocks base method
-func (m *MockPoller) PollLoop(arg0 <-chan struct{}) {
-	m.ctrl.Call(m, "PollLoop", arg0)
+func (m *MockPoller) PollLoop() {
+	m.ctrl.Call(m, "PollLoop")
 }
 
 // PollLoop indicates an expected call of PollLoop
-func (mr *MockPollerMockRecorder) PollLoop(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PollLoop", reflect.TypeOf((*MockPoller)(nil).PollLoop), arg0)
+func (mr *MockPollerMockRecorder) PollLoop() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PollLoop", reflect.TypeOf((*MockPoller)(nil).PollLoop))
+}
+
+// Close mocks base method
+func (m *MockPoller) Close() error {
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close
+func (mr *MockPollerMockRecorder) Close() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockPoller)(nil).Close))
 }

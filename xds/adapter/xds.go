@@ -20,8 +20,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
@@ -143,17 +141,6 @@ type xds struct {
 }
 
 func (x *xds) Run() error {
-	defer func() {
-		for _, c := range x.closers {
-			if err := c.Close(); err != nil {
-				console.Error().Println("close error:", err)
-			}
-		}
-	}()
-
-	signalCleanup := x.configureSignalHandler()
-	defer signalCleanup()
-
 	lis, err := net.Listen("tcp", x.addr)
 	if err != nil {
 		return err
@@ -177,6 +164,7 @@ func (x *xds) Run() error {
 		accesslog.RegisterAccessLogServiceServer(x.gRPCServer, x.logServer)
 	}
 
+	defer console.Info().Println("grpc server exit")
 	if err := x.gRPCServer.Serve(lis); err != nil {
 		x.gRPCServer = nil
 		return err
@@ -199,29 +187,26 @@ func (x *xds) Addr() string {
 	return x.resolvedAddr
 }
 
-func (x *xds) Stop() {
-	if x.gRPCServer != nil {
-		x.gRPCServer.GracefulStop()
+func (x *xds) runClosers() {
+	for _, c := range x.closers {
+		if err := c.Close(); err != nil {
+			console.Error().Println("close error:", err)
+		}
 	}
+	x.closers = nil
 }
 
-func (x *xds) configureSignalHandler() func() {
-	x.signalChan = make(chan os.Signal, 1)
-	signal.Notify(x.signalChan, syscall.SIGINT, syscall.SIGTERM)
+func (x *xds) Stop() {
+	if x.gRPCServer != nil {
+		console.Info().Println("Stopping XDS gRPC server")
+		defer x.runClosers()
 
-	go func() {
-		for {
-			sig, ok := <-x.signalChan
-			if !ok {
-				return
-			}
-			console.Info().Printf("caught %s, shutting down", sig.String())
-			x.Stop()
-		}
-	}()
+		timer := time.AfterFunc(15*time.Second, func() {
+			console.Error().Println("Graceful stop timeout: Forcing XDS gRPC server to stop")
+			x.gRPCServer.Stop()
+		})
+		defer timer.Stop()
 
-	return func() {
-		signal.Stop(x.signalChan)
-		close(x.signalChan)
+		x.gRPCServer.GracefulStop()
 	}
 }

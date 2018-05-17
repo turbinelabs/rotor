@@ -202,22 +202,30 @@ func TestPollerPollLoop(t *testing.T) {
 			pollInterval: time.Second,
 			stats:        mockStats,
 			time:         cs,
+			quitCh:       make(chan struct{}),
 		}
 
 		goroutineExit := &sync.WaitGroup{}
 		goroutineExit.Add(1)
 
-		quitter := make(chan struct{}, 0)
 		go func() {
 			defer goroutineExit.Done()
-			p.PollLoop(quitter)
+			p.PollLoop()
 		}()
 
 		for cs.TriggerAllTimers() == 0 {
 			time.Sleep(10 * time.Millisecond)
 		}
 
-		close(quitter)
+		assert.Nil(t, p.Close())
 		goroutineExit.Wait()
 	})
+}
+
+func TestPollerDoubleClose(t *testing.T) {
+	p := poller{
+		quitCh: make(chan struct{}),
+	}
+	assert.Nil(t, p.Close())
+	assert.ErrorContains(t, p.Close(), "already closed")
 }

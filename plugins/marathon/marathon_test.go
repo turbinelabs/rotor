@@ -16,9 +16,10 @@ limitations under the License.
 
 package marathon
 
+//go:generate mockgen -destination mock_marathon_client_test.go --write_package_comment=false -package $GOPACKAGE github.com/gambol99/go-marathon Marathon
+
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -236,17 +237,23 @@ func TestMarathonFilters(t *testing.T) {
 	assert.True(t, fa(nil, nil, nil, ls))
 }
 
-func marathonUpdateFixtureFetcher(appID string) (*marathon.Tasks, error) {
-	return &tasks, nil
-}
-
-func TestMarathonUpdateNormal(t *testing.T) {
-	resetMarathonFixtures()
+func TestMarathonGetClustersNormal(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
 
-	mockUpdater := updater.NewMockUpdater(ctrl)
-	mockUpdater.EXPECT().Replace(
-		[]api.Cluster{
+	resetMarathonFixtures()
+
+	mockClient := NewMockMarathon(ctrl)
+	mockClient.EXPECT().Groups().Return(&groups, nil)
+	mockClient.EXPECT().Tasks(appID).Return(&tasks, nil)
+
+	collector.client = mockClient
+	clusters, err := collector.getClusters()
+
+	assert.Nil(t, err)
+	assert.ArrayEqual(
+		t,
+		clusters, api.Clusters{
 			{
 				Name: "outer_space",
 				Instances: []api.Instance{
@@ -264,51 +271,86 @@ func TestMarathonUpdateNormal(t *testing.T) {
 					},
 				},
 			},
-		})
-
-	collector.update(&groups, marathonUpdateFixtureFetcher, mockUpdater)
-	ctrl.Finish()
+		},
+	)
 }
 
-func TestMarathonUpdateNoTasks(t *testing.T) {
-	resetMarathonFixtures()
+func TestMarathonGetClustersGroupError(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
-	mockUpdater := updater.NewMockUpdater(ctrl)
-	mockUpdater.EXPECT().Replace([]api.Cluster{{Name: "outer_space"}})
-	emptyFetcher := func(appID string) (*marathon.Tasks, error) {
-		return &marathon.Tasks{Tasks: []marathon.Task{}}, nil
-	}
-	collector.update(&groups, emptyFetcher, mockUpdater)
-	ctrl.Finish()
+	defer ctrl.Finish()
+
+	resetMarathonFixtures()
+	mockClient := NewMockMarathon(ctrl)
+	mockClient.EXPECT().Groups().Return(nil, errors.New("boom"))
+
+	collector.client = mockClient
+	clusters, err := collector.getClusters()
+	assert.ErrorContains(t, err, "boom")
+	assert.Nil(t, clusters)
 }
 
-func TestMarathonUpdateFetchError(t *testing.T) {
-	resetMarathonFixtures()
+func TestMarathonGetClustersNoTasks(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
-	mockUpdater := updater.NewMockUpdater(ctrl)
-	errantFetcher := func(appID string) (*marathon.Tasks, error) {
-		return nil, fmt.Errorf("boom")
-	}
-	collector.update(&groups, errantFetcher, mockUpdater)
-	ctrl.Finish()
+	defer ctrl.Finish()
+
+	resetMarathonFixtures()
+	mockClient := NewMockMarathon(ctrl)
+	mockClient.EXPECT().Groups().Return(&groups, nil)
+	mockClient.EXPECT().Tasks(appID).Return(&marathon.Tasks{Tasks: []marathon.Task{}}, nil)
+
+	collector.client = mockClient
+	clusters, err := collector.getClusters()
+	assert.Nil(t, err)
+	assert.ArrayEqual(
+		t,
+		clusters,
+		api.Clusters{{Name: "outer_space"}},
+	)
 }
 
-func TestMarathonUpdateNoMatchingGroups(t *testing.T) {
-	resetMarathonFixtures()
+func TestMarathonGetClustersFetchError(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	resetMarathonFixtures()
+	mockClient := NewMockMarathon(ctrl)
+	mockClient.EXPECT().Groups().Return(&groups, nil)
+	mockClient.EXPECT().Tasks(appID).Return(nil, errors.New("boom"))
+
+	collector.client = mockClient
+	clusters, err := collector.getClusters()
+	assert.ErrorContains(t, err, "no clusters found")
+	assert.Nil(t, clusters)
+}
+
+func TestMarathonGetClustersNoMatchingGroups(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	resetMarathonFixtures()
+	mockClient := NewMockMarathon(ctrl)
+	mockClient.EXPECT().Groups().Return(&groups, nil)
+
 	collector.groupPrefix = "/z"
-	mockUpdater := updater.NewMockUpdater(ctrl)
-	collector.update(&groups, marathonUpdateFixtureFetcher, mockUpdater)
-	ctrl.Finish()
+	collector.client = mockClient
+	clusters, err := collector.getClusters()
+	assert.ErrorContains(t, err, "no clusters found")
+	assert.Nil(t, clusters)
 }
 
-func TestMarathonUpdateNoMatchingNestedGroups(t *testing.T) {
-	resetMarathonFixtures()
+func TestMarathonGetClustersNoMatchingNestedGroups(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	resetMarathonFixtures()
+	mockClient := NewMockMarathon(ctrl)
+	mockClient.EXPECT().Groups().Return(&groups, nil)
+
 	collector.groupPrefix = "/a/z"
-	mockUpdater := updater.NewMockUpdater(ctrl)
-	collector.update(&groups, marathonUpdateFixtureFetcher, mockUpdater)
-	ctrl.Finish()
+	collector.client = mockClient
+	clusters, err := collector.getClusters()
+	assert.ErrorContains(t, err, "no clusters found")
+	assert.Nil(t, clusters)
 }
 
 func TestMarathonLabelsForApp(t *testing.T) {

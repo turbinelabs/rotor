@@ -26,7 +26,6 @@ import (
 
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/rotor"
-	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/test/assert"
 )
 
@@ -227,14 +226,11 @@ func TestAWSProcessEC2InstanceNoClusters(t *testing.T) {
 	assert.DeepEqual(t, clusters, clusters)
 }
 
-func TestAWSUpdate(t *testing.T) {
+func TestAWSReservationsToClusters(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
 	defer ctrl.Finish()
 
-	mockUpdater := updater.NewMockUpdater(ctrl)
-
 	c := mkAwsCollector()
-	c.updater = mockUpdater
 
 	reservations := []*ec2.Reservation{
 		{
@@ -254,7 +250,9 @@ func TestAWSUpdate(t *testing.T) {
 		},
 	}
 
-	mockUpdater.EXPECT().Replace(
+	assert.ArrayEqual(
+		t,
+		c.reservationsToClusters(reservations),
 		[]api.Cluster{
 			{
 				Name: "c1",
@@ -286,8 +284,6 @@ func TestAWSUpdate(t *testing.T) {
 			},
 		},
 	)
-
-	c.update(reservations)
 }
 
 func TestAWSTagAndPortMap(t *testing.T) {

@@ -248,10 +248,18 @@ func (tc uffMakeTestCase) run(t *testing.T) {
 
 		got, gotErr := mocks.ff.Make()
 		assert.DeepEqual(t, gotErr, tc.wantErr)
-		if tc.wantErr == nil {
+		if tc.wantErr != nil {
+			assert.Nil(t, got)
+			return
+		}
+
+		if tc.disableXDS {
 			assert.Equal(t, got, mockUpdater)
 		} else {
-			assert.Nil(t, got)
+			ux, ok := got.(*updaterWithXDS)
+			assert.True(t, ok)
+			assert.Equal(t, ux.Updater, mockUpdater)
+			assert.Equal(t, ux.xds, mockXDS)
 		}
 	})
 
@@ -318,7 +326,7 @@ func (tc uffMakeTestCase) run(t *testing.T) {
 		mocks.expect(
 			mocks.xdsFromFlags.EXPECT().Make(gomock.Any()).Return(mockXDS, nil),
 			mocks.pollerFromFlags.EXPECT().Make(svc, mockXDS, gomock.Any(), sc).Return(ca),
-			ca.EXPECT().PollLoop(gomock.Any()),
+			ca.EXPECT().PollLoop(),
 		)
 	}
 
@@ -379,7 +387,7 @@ func (tc uffMakeTestCase) runMakeXDS(t *testing.T) {
 		sc.EXPECT().AddTags(stats.NewKVTag(stats.ProxyVersionTag, constants.TbnPublicVersion)),
 		mocks.xdsFromFlags.EXPECT().Make(gomock.Any()).Return(mockXDS, nil),
 		mocks.pollerFromFlags.EXPECT().Make(svc, mockXDS, gomock.Any(), sc).Return(ca),
-		ca.EXPECT().PollLoop(gomock.Any()),
+		ca.EXPECT().PollLoop(),
 	)
 }
 

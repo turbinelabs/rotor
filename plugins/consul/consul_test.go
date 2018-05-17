@@ -25,9 +25,7 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 
 	"github.com/turbinelabs/api"
-	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/test/assert"
-	"github.com/turbinelabs/test/matcher"
 )
 
 const testdc = "some-test-dc"
@@ -192,20 +190,19 @@ func NewStubMkClusters(
 	return fn, verify
 }
 
-type testConsulUpdateCase struct {
+type testConsulGetClustersCase struct {
 	getServicesErr   error
 	getSvcDetailErr  error
 	getNodeHealthErr error
 }
 
-func (tc testConsulUpdateCase) run(t *testing.T) {
+func (tc testConsulGetClustersCase) run(t *testing.T) {
 	type tags []string
 	type md map[string]string
 
 	ctrl := gomock.NewController(assert.Tracing(t))
 	defer ctrl.Finish()
 
-	mockUpdate := updater.NewMockUpdater(ctrl)
 	mockConsul := newMockConsulClient(ctrl)
 	mockHealth := newMockHealthInterface(ctrl)
 	mockCatalog := newMockCatalogInterface(ctrl)
@@ -295,54 +292,50 @@ func (tc testConsulUpdateCase) run(t *testing.T) {
 	}
 	defer nhVerifyFn()
 
-	clusters := api.Clusters{
+	wantClusters := api.Clusters{
 		{ClusterKey: "someasnuthoeus"},
 		{ClusterKey: "someasnuthoeus2"},
 		{ClusterKey: "someasnuthoeus3"},
 	}
 
 	mkClusterFn, mkClusterVerify := NewStubMkClusters(
-		t, hitErr, svctag, svcDetails, nodeHealth, clusters)
+		t, hitErr, svctag, svcDetails, nodeHealth, wantClusters)
 	defer mkClusterVerify()
 
+	gotClusters, err :=
+		consulGetClusters(
+			mockConsul,
+			svctag,
+			testdc,
+			getSvcsFn,
+			getSvcDetail.Fn(),
+			getNodeHealth.Fn(),
+			mkClusterFn,
+		)
 	if hitErr == nil {
-		mockUpdate.EXPECT().Replace(matcher.PredicateMatcher{
-			func(got interface{}) bool {
-				return assert.DeepEqual(t, got, clusters)
-			},
-			"DeepEqual of api.Clusters",
-		})
+		assert.ArrayEqual(t, gotClusters, wantClusters)
+	} else {
+		assert.NonNil(t, err)
 	}
-
-	consulUpdate(
-		mockUpdate,
-		mockConsul,
-		svctag,
-		testdc,
-		getSvcsFn,
-		getSvcDetail.Fn(),
-		getNodeHealth.Fn(),
-		mkClusterFn,
-	)
 }
 
 func TestConsulUpdateGetSvcsErr(t *testing.T) {
 	err := errors.New("asonteuh")
-	testConsulUpdateCase{err, nil, nil}.run(t)
-	testConsulUpdateCase{}.run(t)
+	testConsulGetClustersCase{err, nil, nil}.run(t)
+	testConsulGetClustersCase{}.run(t)
 }
 func TestConsulUpdateGetSvcDetailErr(t *testing.T) {
 	err := errors.New("asonteuh")
-	testConsulUpdateCase{nil, err, nil}.run(t)
-	testConsulUpdateCase{}.run(t)
+	testConsulGetClustersCase{nil, err, nil}.run(t)
+	testConsulGetClustersCase{}.run(t)
 }
 func TestConsulUpdateGetNodeHealthErr(t *testing.T) {
 	err := errors.New("asonteuh")
-	testConsulUpdateCase{nil, nil, err}.run(t)
-	testConsulUpdateCase{}.run(t)
+	testConsulGetClustersCase{nil, nil, err}.run(t)
+	testConsulGetClustersCase{}.run(t)
 }
 func TestConsulUpdate(t *testing.T) {
-	testConsulUpdateCase{}.run(t)
+	testConsulGetClustersCase{}.run(t)
 }
 
 func TestMkClusters(t *testing.T) {

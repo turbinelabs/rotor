@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package updater provides implements the application of a complete set of
-// or observed changes to cluster data to the Turbine API with a minimum
-// delay between updates.
 package updater
 
 import (

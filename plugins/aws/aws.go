@@ -24,7 +24,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -137,18 +136,17 @@ func (r *awsRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.BadInput(err)
 	}
 
-	updater, err := r.updaterFlags.Make()
+	u, err := r.updaterFlags.Make()
 	if err != nil {
 		return cmd.Error(err)
 	}
 
 	c := awsCollector{
 		settings: r.settings,
-		updater:  updater,
 		ec2Svc:   ec2.New(r.awsFlags.Make()),
 	}
 
-	c.updateLoop()
+	updater.Loop(u, c.getClusters)
 
 	return command.NoError()
 }
@@ -168,23 +166,16 @@ func (r *awsRunner) processFilters(strs []string) (map[string][]string, error) {
 
 type awsCollector struct {
 	settings awsCollectorSettings
-	updater  updater.Updater
 	ec2Svc   *ec2.EC2
 }
 
-func (c awsCollector) updateLoop() {
+func (c awsCollector) getClusters() ([]api.Cluster, error) {
 	params := &ec2.DescribeInstancesInput{Filters: c.mkFilters()}
-
-	for {
-		resp, err := c.ec2Svc.DescribeInstances(params)
-		if err == nil {
-			c.update(resp.Reservations)
-		} else {
-			console.Error().Printf("error executing aws api list: %s", err.Error())
-		}
-
-		time.Sleep(c.updater.Delay())
+	resp, err := c.ec2Svc.DescribeInstances(params)
+	if err != nil {
+		return nil, fmt.Errorf("error executing aws api list: %s", err.Error())
 	}
+	return c.reservationsToClusters(resp.Reservations), nil
 }
 
 func (c awsCollector) mkFilters() []*ec2.Filter {
@@ -213,7 +204,7 @@ func (c awsCollector) mkFilters() []*ec2.Filter {
 	return filters
 }
 
-func (c awsCollector) update(reservs []*ec2.Reservation) {
+func (c awsCollector) reservationsToClusters(reservs []*ec2.Reservation) api.Clusters {
 	clustersMap := map[string]*api.Cluster{}
 	for _, res := range reservs {
 		for _, inst := range res.Instances {
@@ -221,14 +212,14 @@ func (c awsCollector) update(reservs []*ec2.Reservation) {
 		}
 	}
 
-	clusters := make([]api.Cluster, 0, len(clustersMap))
+	clusters := make(api.Clusters, 0, len(clustersMap))
 	for _, cluster := range clustersMap {
 		sort.Sort(api.InstancesByHostPort(cluster.Instances))
 		clusters = append(clusters, *cluster)
 	}
 	sort.Sort(api.ClusterByName(clusters))
 
-	c.updater.Replace(clusters)
+	return clusters
 }
 
 func (c awsCollector) processEC2Instance(clusters map[string]*api.Cluster, inst *ec2.Instance) {

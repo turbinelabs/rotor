@@ -17,16 +17,16 @@ limitations under the License.
 package v2
 
 import (
-	"time"
+	"errors"
+	"strings"
 
+	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/cli/command"
 	tbnflag "github.com/turbinelabs/nonstdlib/flag"
 	"github.com/turbinelabs/nonstdlib/flag/usage"
-	"github.com/turbinelabs/nonstdlib/log/console"
 	"github.com/turbinelabs/rotor"
 	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/rotor/xds/adapter"
-	"github.com/turbinelabs/rotor/xds/collector"
 )
 
 const envoyV2Description = `{{ul "EXPERIMENTAL"}} Connects to a running Envoy
@@ -80,42 +80,49 @@ func (r *runner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.BadInput(err)
 	}
 
-	updater, err := r.updaterFlags.Make()
+	u, err := r.updaterFlags.Make()
 	if err != nil {
 		return cmd.Error(err)
 	}
 
 	isJSON := r.format.String() == "json"
-	collect, err := adapter.NewClusterCollector(r.addr.Addr(), updater.ZoneName(), isJSON)
+	collector, err := adapter.NewClusterCollector(r.addr.Addr(), u.ZoneName(), isJSON)
 	if err != nil {
 		return cmd.Error(err)
 	}
+	defer collector.Close()
 
-	updateLoop(updater, collect)
-	defer collect.Close()
+	updater.Loop(
+		u,
+		func() ([]api.Cluster, error) {
+			tbnClusters, errMap := collector.Collect()
+			if len(errMap) > 0 {
+				return nil, mkError(errMap)
+			}
+
+			if len(tbnClusters) == 0 {
+				return nil, errors.New("no clusters found, skipping update")
+			}
+
+			return tbnClusters, nil
+		},
+	)
 
 	return command.NoError()
 }
 
-func updateLoop(u updater.Updater, c collector.ClusterCollector) {
-	for {
-		tbnClusters, errMap := c.Collect()
-		if len(errMap) > 0 {
-			reportErrs(errMap)
-		}
-
-		if len(tbnClusters) > 0 {
-			u.Replace(tbnClusters)
-		}
-
-		time.Sleep(u.Delay())
-	}
-}
-
-func reportErrs(errMap map[string][]error) {
+func mkError(errMap map[string][]error) error {
+	b := &strings.Builder{}
 	for c, errs := range errMap {
 		for _, e := range errs {
-			console.Error().Printf("Error handling CDS update for cluster %s: %s", c, e)
+			if b.Len() > 0 {
+				b.WriteRune('\n')
+			}
+			b.WriteString("Error handling CDS update for cluster ")
+			b.WriteString(c)
+			b.WriteRune(' ')
+			b.WriteString(e.Error())
 		}
 	}
+	return errors.New(b.String())
 }

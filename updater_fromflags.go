@@ -198,7 +198,7 @@ func (ff *updaterFromFlags) asyncStartXDS(x adapter.XDS) {
 }
 
 func syncPollLoop(p poller.Poller) {
-	p.PollLoop(make(chan struct{}, 0))
+	p.PollLoop()
 }
 
 func asyncPollLoop(p poller.Poller) {
@@ -279,11 +279,13 @@ func (ff *updaterFromFlags) Make() (updater.Updater, error) {
 		up = ff.updaterFromFlags.Make(svc, zone)
 	}
 
-	if !ff.disableXDS {
-		ff.startXDS(xds)
+	if ff.disableXDS {
+		return up, nil
 	}
 
-	return up, nil
+	ff.startXDS(xds)
+
+	return &updaterWithXDS{Updater: up, xds: xds}, nil
 }
 
 func (ff *updaterFromFlags) MakeXDS() (adapter.XDS, error) {

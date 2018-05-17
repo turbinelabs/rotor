@@ -247,12 +247,12 @@ func TestFileCollectorParseError(t *testing.T) {
 	assert.NonNil(t, err)
 }
 
-func testReload(t *testing.T, collector *fileCollector, data string) (bool, error) {
+func testReload(t *testing.T, collector *fileCollector, data string) error {
 	tempFile, cleanup := tempfile.Write(t, data, "filecollector-reload")
 	defer cleanup()
 	collector.file = tempFile
 
-	return true, collector.reload()
+	return collector.reload()
 }
 
 func TestFileCollectorReload(t *testing.T) {
@@ -261,8 +261,7 @@ func TestFileCollectorReload(t *testing.T) {
 
 	mockUpdater.EXPECT().Replace(simpleTestClusters)
 
-	testRan, error := testReload(t, yamlCollector, SimpleYamlInput)
-	assert.True(t, testRan)
+	error := testReload(t, yamlCollector, SimpleYamlInput)
 	assert.Nil(t, error)
 }
 
@@ -270,8 +269,7 @@ func TestFileCollectorReloadParseError(t *testing.T) {
 	yamlCollector, ctrl, _ := makeFileCollectorAndMock(t)
 	defer ctrl.Finish()
 
-	testRan, error := testReload(t, yamlCollector, "nope nope nope")
-	assert.True(t, testRan)
+	error := testReload(t, yamlCollector, "nope nope nope")
 	assert.ErrorContains(t, error, "cannot unmarshal")
 }
 
@@ -287,7 +285,15 @@ func TestFileCollectorReloadReadFileError(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
-func TestFileEventLoop(t *testing.T) {
+func TestFileEventLoopErrorExit(t *testing.T) {
+	testFileEventLoop(t, true)
+}
+
+func TestFileEventLoopSignalExit(t *testing.T) {
+	testFileEventLoop(t, false)
+}
+
+func testFileEventLoop(t *testing.T, exitOnErr bool) {
 	yamlCollector, ctrl, mockUpdater := makeFileCollectorAndMock(t)
 	defer ctrl.Finish()
 
@@ -300,13 +306,14 @@ func TestFileEventLoop(t *testing.T) {
 
 	events := make(chan fsnotify.Event)
 	errs := make(chan error)
+	signals := make(chan os.Signal)
 
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(1)
 
 	var eventLoopResult error
 	go func() {
-		eventLoopResult = yamlCollector.eventLoop(events, errs)
+		eventLoopResult = yamlCollector.eventLoop(events, errs, signals)
 		waitGroup.Done()
 	}()
 
@@ -322,9 +329,17 @@ func TestFileEventLoop(t *testing.T) {
 		Name: tempFile,
 		Op:   fsnotify.Create,
 	}
-	errs <- errors.New("quit")
+	if exitOnErr {
+		errs <- errors.New("fail")
+	} else {
+		signals <- os.Interrupt
+	}
 
 	waitGroup.Wait()
 
-	assert.HasSuffix(t, eventLoopResult.Error(), "quit")
+	if exitOnErr {
+		assert.ErrorContains(t, eventLoopResult, "fail")
+	} else {
+		assert.Nil(t, eventLoopResult)
+	}
 }

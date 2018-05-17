@@ -108,12 +108,11 @@ func (r *fileRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	file := filepath.Clean(args[0])
 
 	collector := NewCollector(file, updater, mkParser(r.codecFlags.Make()))
-
 	if err := collector.Run(); err != nil {
 		return cmd.Error(err)
-	} else {
-		return command.NoError()
 	}
+
+	return command.NoError()
 }
 
 type fileCluster struct {

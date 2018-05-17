@@ -20,6 +20,7 @@ package kubernetes
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ import (
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
+	k8stypedv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/cli/command"
@@ -146,7 +148,7 @@ func (r *kubernetesRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		}
 	}
 
-	updater, err := r.updaterFlags.Make()
+	u, err := r.updaterFlags.Make()
 	if err != nil {
 		return cmd.Errorf(err.Error())
 	}
@@ -158,56 +160,51 @@ func (r *kubernetesRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 
 	c := kubernetesCollector{
 		k8sCollectorSettings: r.k8sCollectorSettings,
-		updater:              updater,
 		k8sClient:            k8sClient,
 		labelSelector:        labelSelector,
 	}
-	c.updateLoop()
 
-	return command.NoError() // unreachable
+	clientPods := c.k8sClient.Core().Pods(c.namespace)
+	updater.Loop(
+		u,
+		func() ([]api.Cluster, error) {
+			return c.getClusters(clientPods)
+		},
+	)
+
+	return command.NoError()
 }
 
 type kubernetesCollector struct {
 	k8sCollectorSettings
 
-	updater       updater.Updater
 	k8sClient     *k8s.Clientset
 	labelSelector labels.Selector
 }
 
-func (c *kubernetesCollector) updateLoop() {
-	clientPods := c.k8sClient.Core().Pods(c.namespace)
-
-	timeout := int64(math.Min(c.timeout.Seconds(), 1.0))
+func (c *kubernetesCollector) getClusters(client k8stypedv1.PodInterface) (api.Clusters, error) {
+	timeout := int64(math.Max(c.timeout.Seconds(), 1.0))
 	listOptions := k8smetav1.ListOptions{
 		LabelSelector:  c.labelSelector.String(),
 		TimeoutSeconds: &timeout,
 	}
 
-	for {
-		list, err := clientPods.List(listOptions)
-		if err == nil {
-			c.update(list.Items)
-		} else {
-			console.Error().Printf("error executing kubernetes api list: %s", err.Error())
-		}
-
-		time.Sleep(c.updater.Delay())
+	list, err := client.List(listOptions)
+	if err != nil {
+		return nil, fmt.Errorf("error executing kubernetes api list: %s", err.Error())
 	}
-}
 
-func (c *kubernetesCollector) update(pods []k8sapiv1.Pod) {
 	clustersMap := map[string]*api.Cluster{}
-	for _, pod := range pods {
+	for _, pod := range list.Items {
 		c.handlePod(clustersMap, pod)
 	}
 
-	clusters := make([]api.Cluster, 0, len(clustersMap))
+	clusters := make(api.Clusters, 0, len(clustersMap))
 	for _, cluster := range clustersMap {
 		clusters = append(clusters, *cluster)
 	}
 
-	c.updater.Replace(clusters)
+	return clusters, nil
 }
 
 func (c *kubernetesCollector) makeInstance(pod k8sapiv1.Pod, port int) (string, api.Instance) {

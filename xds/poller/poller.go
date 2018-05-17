@@ -21,6 +21,7 @@ package poller
 //go:generate mockgen -source $GOFILE -destination mock_$GOFILE -package $GOPACKAGE --write_package_comment=false
 
 import (
+	"errors"
 	"time"
 
 	"github.com/turbinelabs/api/service"
@@ -41,9 +42,11 @@ type Poller interface {
 	Poll() error
 
 	// PollLoop polls for changes to the configuration objects of a Proxy in an
-	// infinite loop, logging errors. Closing the given channel signals the loop
-	// to exit.
-	PollLoop(<-chan struct{})
+	// infinite loop, logging errors. Closing the Poller signals the loop to exit.
+	PollLoop()
+
+	// Close causes PollLoop to exit.
+	Close() error
 }
 
 // New creates a Poller backed by the given service.All
@@ -62,6 +65,7 @@ func New(
 		pollInterval: pollInterval,
 		stats:        stats,
 		time:         tbntime.NewSource(),
+		quitCh:       make(chan struct{}),
 	}
 }
 
@@ -73,9 +77,10 @@ type poller struct {
 	pollInterval time.Duration
 	stats        stats.Stats
 	time         tbntime.Source
+	quitCh       chan struct{}
 }
 
-func (p *poller) PollLoop(quit <-chan struct{}) {
+func (p *poller) PollLoop() {
 	// Create a timer and stop it such that it's guaranteed safe
 	// for a future Reset.
 	timer := p.time.NewTimer(time.Hour)
@@ -89,7 +94,7 @@ func (p *poller) PollLoop(quit <-chan struct{}) {
 
 		timer.Reset(p.pollInterval)
 		select {
-		case <-quit:
+		case <-p.quitCh:
 			console.Info().Println("api polling loop exit")
 			return
 		case <-timer.C():
@@ -143,5 +148,19 @@ func (p *poller) pollOne(pRef service.ProxyRef) error {
 		}
 	}
 
+	return nil
+}
+
+func (p *poller) Close() error {
+	select {
+	case _, ok := <-p.quitCh:
+		if !ok {
+			return errors.New("already closed")
+		}
+
+	default:
+	}
+
+	close(p.quitCh)
 	return nil
 }

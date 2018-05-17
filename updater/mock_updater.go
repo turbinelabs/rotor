@@ -66,3 +66,15 @@ func (m *MockUpdater) ZoneName() string {
 func (mr *MockUpdaterMockRecorder) ZoneName() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZoneName", reflect.TypeOf((*MockUpdater)(nil).ZoneName))
 }
+
+// Close mocks base method
+func (m *MockUpdater) Close() error {
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close
+func (mr *MockUpdaterMockRecorder) Close() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockUpdater)(nil).Close))
+}

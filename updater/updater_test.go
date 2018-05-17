@@ -419,3 +419,8 @@ func TestReplaceClustersOpExecuteError(t *testing.T) {
 
 	ctrl.Finish()
 }
+
+func TestClose(t *testing.T) {
+	u := &updater{}
+	assert.Nil(t, u.Close())
+}

@@ -19,7 +19,7 @@ limitations under the License.
 package consul
 
 import (
-	"time"
+	"fmt"
 
 	consulapi "github.com/hashicorp/consul/api"
 
@@ -36,7 +36,7 @@ import (
 //go:generate $TBN_HOME/scripts/mockgen_internal.sh -type consulClient,catalogInterface,healthInterface,getClientInterface -source $GOFILE -destination mock_$GOFILE -package $GOPACKAGE --write_package_comment=false
 
 // consulClient enables us to provide a mockable interface to the Consul API.
-// For documentation of these methods see github.com/hashicorp/consul/api docs.
+// For documentation of these methods see github.com/hashicorp/consul/tree/master/api docs.
 type consulClient interface {
 	Catalog() catalogInterface
 	Health() healthInterface
@@ -55,19 +55,25 @@ func (a ccAdapter) Health() healthInterface {
 }
 
 // catalogInterface enables us to provide a mockable interface to the Consul
-// Catalog API. For documentation of these methods see github.com/hashicorp/consul/api
+// Catalog API. For documentation of these methods see github.com/hashicorp/consul/tree/master/api
 // docs.
 type catalogInterface interface {
 	Datacenters() ([]string, error)
-	Services(*consulapi.QueryOptions) (map[string][]string, *consulapi.QueryMeta, error)
-	Service(string, string, *consulapi.QueryOptions) ([]*consulapi.CatalogService, *consulapi.QueryMeta, error)
+	Services(queryOpts *consulapi.QueryOptions) (map[string][]string, *consulapi.QueryMeta, error)
+	Service(
+		service, tag string,
+		queryOpts *consulapi.QueryOptions,
+	) ([]*consulapi.CatalogService, *consulapi.QueryMeta, error)
 }
 
 // healthInterface enables us to provide a mockable interface to the Consul
-// Health API. For documentation of these methods see github.com/hashicorp/consul/api
+// Health API. For documentation of these methods see github.com/hashicorp/consul/tree/master/api
 // docs.
 type healthInterface interface {
-	Node(string, *consulapi.QueryOptions) (consulapi.HealthChecks, *consulapi.QueryMeta, error)
+	Node(
+		node string,
+		queryOpts *consulapi.QueryOptions,
+	) (consulapi.HealthChecks, *consulapi.QueryMeta, error)
 }
 
 const (
@@ -127,17 +133,11 @@ type consulRunner struct {
 	consulSettings
 
 	updaterFlags rotor.UpdaterFromFlags
-	updateLoop   consulUpdateFn
 }
 
 func Cmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
-	return cmd(updaterFlags, consulUpdateLoop)
-}
-
-func cmd(updaterFlags rotor.UpdaterFromFlags, updateFn consulUpdateFn) *command.Cmd {
 	runner := &consulRunner{}
 	runner.updaterFlags = updaterFlags
-	runner.updateLoop = updateFn
 
 	cmd := &command.Cmd{
 		Name:        "consul",
@@ -186,7 +186,7 @@ type getClientInterface interface {
 	getClient() (consulClient, error)
 }
 
-func (cr consulRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
+func (cr *consulRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	if cr.consulDC == "" {
 		return cmd.BadInput("Target datacenter must be specified.")
 	}
@@ -195,7 +195,7 @@ func (cr consulRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.BadInput(err)
 	}
 
-	updater, err := cr.updaterFlags.Make()
+	u, err := cr.updaterFlags.Make()
 	if err != nil {
 		return cmd.Error(err)
 	}
@@ -214,13 +214,25 @@ func (cr consulRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.Errorf("Datacenter %s was not found", cr.consulDC)
 	}
 
-	cr.updateLoop(updater, client, cr.tbnServiceTag, cr.consulDC)
+	updater.Loop(
+		u,
+		func() ([]api.Cluster, error) {
+			return consulGetClusters(
+				client,
+				cr.tbnServiceTag,
+				cr.consulDC,
+				getConsulServices,
+				getConsulServiceDetail,
+				getConsulNodeHealth,
+				mkClusters,
+			)
+		},
+	)
 
 	return command.NoError()
 }
 
-func consulUpdate(
-	updater updater.Updater,
+func consulGetClusters(
 	client consulClient,
 	svcTag string,
 	dc string,
@@ -228,19 +240,18 @@ func consulUpdate(
 	getServiceDetail getConsulServiceDetailFn,
 	getNodeHealth getConsulNodeHealthFn,
 	getClusters mkClusterFn,
-) {
+) ([]api.Cluster, error) {
 	healthAPI := client.Health()
 	catalogAPI := client.Catalog()
 
 	// get services within a datacenter
 	svcs, err := getServices(catalogAPI, dc)
 	if err != nil {
-		console.Error().Printf(
+		return nil, fmt.Errorf(
 			"Skipping collection. Error retrieving services in data center %s: %s",
 			dc,
 			err.Error(),
 		)
-		return
 	}
 
 	// cull to only services marked for turbine
@@ -251,12 +262,11 @@ func consulUpdate(
 	for svcID := range svcs {
 		detail, err := getServiceDetail(catalogAPI, dc, svcID, svcTag)
 		if err != nil {
-			console.Error().Printf(
+			return nil, fmt.Errorf(
 				"Skipping collection. Error retrieving nodes for service %s: %s",
 				svcID,
 				err.Error(),
 			)
-			return
 		}
 		svcDetails[svcID] = detail
 	}
@@ -273,42 +283,18 @@ func consulUpdate(
 			if _, haveNode := nodeHealth[node.id]; !haveNode {
 				health, err := getNodeHealth(healthAPI, dc, node.id)
 				if err != nil {
-					console.Error().Printf(
+					return nil, fmt.Errorf(
 						"Skipping collection. Error getting node health %s: %s",
 						node.id,
 						err.Error(),
 					)
-					return
 				}
 				nodeHealth[node.id] = health
 			}
 		}
 	}
 
-	clusters := getClusters(svcTag, svcDetails, nodeHealth)
-
-	updater.Replace(clusters)
-}
-
-func consulUpdateLoop(
-	updater updater.Updater,
-	client consulClient,
-	svcTag string,
-	dc string,
-) {
-	for {
-		consulUpdate(
-			updater,
-			client,
-			svcTag,
-			dc,
-			getConsulServices,
-			getConsulServiceDetail,
-			getConsulNodeHealth,
-			mkClusters,
-		)
-		time.Sleep(updater.Delay())
-	}
+	return getClusters(svcTag, svcDetails, nodeHealth), nil
 }
 
 // mkClusterFn represents a function that combines service details and node

@@ -18,11 +18,11 @@ package aws
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
 
+	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/cli/command"
 	tbnflag "github.com/turbinelabs/nonstdlib/flag"
 	"github.com/turbinelabs/nonstdlib/flag/usage"
@@ -107,30 +107,25 @@ func (r ecsRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.BadInput(err)
 	}
 
-	updater, err := r.updaterFlags.Make()
+	u, err := r.updaterFlags.Make()
 	if err != nil {
 		return cmd.Error(err)
 	}
 
-	ecsUpdateLoop(updater, awsSvc, r.cfg, ecsUpdateAction)
+	updater.Loop(
+		u,
+		func() ([]api.Cluster, error) {
+			return ecsGetClustersAction(r.cfg, awsSvc)
+		},
+	)
 
 	return command.NoError()
 }
 
-func ecsUpdateLoop(updater updater.Updater, client awsClient, cfg ecsSettings, do ecsUpdaterFn) {
-	for {
-		do(cfg, updater, client)
-		time.Sleep(updater.Delay())
-	}
-}
-
-type ecsUpdaterFn func(ecsSettings, updater.Updater, awsClient)
-
-func ecsUpdateAction(cfg ecsSettings, updater updater.Updater, aws awsClient) {
+func ecsGetClustersAction(cfg ecsSettings, aws awsClient) ([]api.Cluster, error) {
 	state, err := NewECSState(aws, cfg.clusters.Strings)
 	if err != nil {
-		console.Error().Printf("Could not read ECS state: %v", err.Error())
-		return
+		return nil, fmt.Errorf("Could not read ECS state: %v", err.Error())
 	}
 
 	tagSet := state.meta.identifyTaggedItems(cfg)
@@ -142,7 +137,5 @@ func ecsUpdateAction(cfg ecsSettings, updater updater.Updater, aws awsClient) {
 		}
 	}
 
-	clusters := bindClusters(cfg.clusterTag, state, tagSet)
-
-	updater.Replace(clusters)
+	return bindClusters(cfg.clusterTag, state, tagSet), nil
 }

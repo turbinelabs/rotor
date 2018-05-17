@@ -47,6 +47,9 @@ type Updater interface {
 
 	// ZoneName returns the name of the zone we're managing updates for.
 	ZoneName() string
+
+	// Close stops the Updater and releases its resources.
+	Close() error
 }
 
 type updater struct {
@@ -156,4 +159,8 @@ func (u *updater) Delay() time.Duration {
 
 func (u *updater) ZoneName() string {
 	return u.zoneName
+}
+
+func (u *updater) Close() error {
+	return nil
 }

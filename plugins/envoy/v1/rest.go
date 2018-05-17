@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/turbinelabs/api"
 	tbnhttp "github.com/turbinelabs/api/http"
@@ -53,7 +52,7 @@ func (r *restRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.BadInput(err)
 	}
 
-	updater, err := r.updaterFlags.Make()
+	u, err := r.updaterFlags.Make()
 	if err != nil {
 		return cmd.Error(err)
 	}
@@ -74,7 +73,7 @@ func (r *restRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	}
 
 	if len(cdsRoutes) == 0 {
-		console.Info().Printf("No clustersNodes provided. Using CDS route \"/v1/clusters\"")
+		console.Info().Printf(`No clusters-nodes provided. Using CDS route "/v1/clusters"`)
 		cdsRoutes = append(cdsRoutes, cdsPathRoot)
 	}
 
@@ -86,13 +85,12 @@ func (r *restRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	}
 
 	collector := &restCollector{
-		updater:   updater,
 		cdsRoutes: cdsRoutes,
 		clientFn:  clientFn,
 		parserFn:  parser,
 	}
 
-	collector.updateLoop()
+	updater.Loop(u, collector.getAllClusters)
 
 	return command.NoError()
 }
@@ -104,8 +102,7 @@ func mkCdsRoutes(pairs []string) ([]string, error) {
 		switch {
 		case strings.Contains(n, ":") || (c == "" && n == "") || c == "":
 			return nil, fmt.Errorf(
-				"clustersNodes must be of the form \"<cluster>:<node>\" or "+
-					"\"<cluster>\", but was %s",
+				`clusters-nodes must be of the form "<cluster>:<node>" or "<cluster>", but was %s`,
 				cn,
 			)
 
@@ -125,25 +122,29 @@ func mkCdsRoutes(pairs []string) ([]string, error) {
 }
 
 type restCollector struct {
-	updater   updater.Updater
 	cdsRoutes []string
 	clientFn  func(string) (*http.Response, error)
 	parserFn  func(io.Reader) ([]api.Cluster, error)
 }
 
-func (rc *restCollector) updateLoop() {
-	for {
-		for _, cdsRoute := range rc.cdsRoutes {
-			tbnClusters, err := rc.getClusters(cdsRoute)
-			if err == nil {
-				rc.updater.Replace(tbnClusters)
-			} else {
-				console.Error().Printf("Error handling CDS update for: %s", cdsRoute)
-			}
+func (rc *restCollector) getAllClusters() ([]api.Cluster, error) {
+	errRoutes := []string{}
+	clusters := []api.Cluster{}
+	for _, cdsRoute := range rc.cdsRoutes {
+		routeClusters, err := rc.getClusters(cdsRoute)
+		if err != nil {
+			errRoutes = append(errRoutes, cdsRoute)
+			continue
 		}
 
-		time.Sleep(rc.updater.Delay())
+		clusters = append(clusters, routeClusters...)
 	}
+
+	if len(errRoutes) > 0 {
+		return nil, fmt.Errorf("Error handling CDS update for: %s", strings.Join(errRoutes, ", "))
+	}
+
+	return clusters, nil
 }
 
 func (rc *restCollector) getClusters(route string) ([]api.Cluster, error) {

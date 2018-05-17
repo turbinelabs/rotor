@@ -93,8 +93,8 @@ func (mr *mockCatalogInterfaceMockRecorder) Datacenters() *gomock.Call {
 }
 
 // Services mocks base method
-func (m *mockCatalogInterface) Services(arg0 *api.QueryOptions) (map[string][]string, *api.QueryMeta, error) {
-	ret := m.ctrl.Call(m, "Services", arg0)
+func (m *mockCatalogInterface) Services(queryOpts *api.QueryOptions) (map[string][]string, *api.QueryMeta, error) {
+	ret := m.ctrl.Call(m, "Services", queryOpts)
 	ret0, _ := ret[0].(map[string][]string)
 	ret1, _ := ret[1].(*api.QueryMeta)
 	ret2, _ := ret[2].(error)
@@ -102,13 +102,13 @@ func (m *mockCatalogInterface) Services(arg0 *api.QueryOptions) (map[string][]st
 }
 
 // Services indicates an expected call of Services
-func (mr *mockCatalogInterfaceMockRecorder) Services(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Services", reflect.TypeOf((*mockCatalogInterface)(nil).Services), arg0)
+func (mr *mockCatalogInterfaceMockRecorder) Services(queryOpts interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Services", reflect.TypeOf((*mockCatalogInterface)(nil).Services), queryOpts)
 }
 
 // Service mocks base method
-func (m *mockCatalogInterface) Service(arg0, arg1 string, arg2 *api.QueryOptions) ([]*api.CatalogService, *api.QueryMeta, error) {
-	ret := m.ctrl.Call(m, "Service", arg0, arg1, arg2)
+func (m *mockCatalogInterface) Service(service, tag string, queryOpts *api.QueryOptions) ([]*api.CatalogService, *api.QueryMeta, error) {
+	ret := m.ctrl.Call(m, "Service", service, tag, queryOpts)
 	ret0, _ := ret[0].([]*api.CatalogService)
 	ret1, _ := ret[1].(*api.QueryMeta)
 	ret2, _ := ret[2].(error)
@@ -116,8 +116,8 @@ func (m *mockCatalogInterface) Service(arg0, arg1 string, arg2 *api.QueryOptions
 }
 
 // Service indicates an expected call of Service
-func (mr *mockCatalogInterfaceMockRecorder) Service(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Service", reflect.TypeOf((*mockCatalogInterface)(nil).Service), arg0, arg1, arg2)
+func (mr *mockCatalogInterfaceMockRecorder) Service(service, tag, queryOpts interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Service", reflect.TypeOf((*mockCatalogInterface)(nil).Service), service, tag, queryOpts)
 }
 
 // mockHealthInterface is a mock of healthInterface interface
@@ -144,8 +144,8 @@ func (m *mockHealthInterface) EXPECT() *mockHealthInterfaceMockRecorder {
 }
 
 // Node mocks base method
-func (m *mockHealthInterface) Node(arg0 string, arg1 *api.QueryOptions) (api.HealthChecks, *api.QueryMeta, error) {
-	ret := m.ctrl.Call(m, "Node", arg0, arg1)
+func (m *mockHealthInterface) Node(node string, queryOpts *api.QueryOptions) (api.HealthChecks, *api.QueryMeta, error) {
+	ret := m.ctrl.Call(m, "Node", node, queryOpts)
 	ret0, _ := ret[0].(api.HealthChecks)
 	ret1, _ := ret[1].(*api.QueryMeta)
 	ret2, _ := ret[2].(error)
@@ -153,8 +153,8 @@ func (m *mockHealthInterface) Node(arg0 string, arg1 *api.QueryOptions) (api.Hea
 }
 
 // Node indicates an expected call of Node
-func (mr *mockHealthInterfaceMockRecorder) Node(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Node", reflect.TypeOf((*mockHealthInterface)(nil).Node), arg0, arg1)
+func (mr *mockHealthInterfaceMockRecorder) Node(node, queryOpts interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Node", reflect.TypeOf((*mockHealthInterface)(nil).Node), node, queryOpts)
 }
 
 // mockGetClientInterface is a mock of getClientInterface interface

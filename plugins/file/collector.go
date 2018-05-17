@@ -19,6 +19,8 @@ package file
 import (
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"path/filepath"
 
 	fsnotify "gopkg.in/fsnotify.v1"
@@ -58,6 +60,8 @@ type fileCollector struct {
 }
 
 func (c *fileCollector) Run() error {
+	defer c.updater.Close()
+
 	if err := c.reload(); err != nil {
 		return err
 	}
@@ -68,7 +72,10 @@ func (c *fileCollector) Run() error {
 	}
 	defer closer.Close()
 
-	return c.eventLoop(events, errors)
+	signals := updater.SignalNotifier()
+	defer signal.Stop(signals)
+
+	return c.eventLoop(events, errors, signals)
 }
 
 func (c *fileCollector) reload() error {
@@ -111,7 +118,11 @@ func (c *fileCollector) startWatcher() (chan fsnotify.Event, chan error, io.Clos
 	return watcher.Events, watcher.Errors, watcher, nil
 }
 
-func (c *fileCollector) eventLoop(events chan fsnotify.Event, errors chan error) error {
+func (c *fileCollector) eventLoop(
+	events chan fsnotify.Event,
+	errors chan error,
+	signals chan os.Signal,
+) error {
 	for {
 		select {
 		case event := <-events:
@@ -126,6 +137,10 @@ func (c *fileCollector) eventLoop(events chan fsnotify.Event, errors chan error)
 
 		case err := <-errors:
 			return fmt.Errorf("watch error: %s", err)
+
+		case signal := <-signals:
+			console.Info().Printf("%s: exiting", signal.String())
+			return nil
 		}
 	}
 }

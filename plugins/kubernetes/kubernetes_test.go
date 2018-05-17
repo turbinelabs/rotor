@@ -16,6 +16,8 @@ limitations under the License.
 
 package kubernetes
 
+//go:generate mockgen -destination mock_pod_iface_test.go --write_package_comment=false -package $GOPACKAGE k8s.io/client-go/kubernetes/typed/core/v1 PodInterface
+
 import (
 	"errors"
 	"testing"
@@ -23,8 +25,10 @@ import (
 	"github.com/golang/mock/gomock"
 	k8sapiv1 "k8s.io/api/core/v1"
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/turbinelabs/api"
+	"github.com/turbinelabs/nonstdlib/ptr"
 	"github.com/turbinelabs/rotor"
 	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/test/assert"
@@ -524,13 +528,16 @@ func TestKubernetesMakeInstanceWithExtras(t *testing.T) {
 	assert.HasSameElements(t, instance.Metadata, expectedInstance.Metadata)
 }
 
-func TestKubernetesUpdate(t *testing.T) {
+func TestKubernetesGetClusters(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
-	mockUpdater := updater.NewMockUpdater(ctrl)
+	defer ctrl.Finish()
+
+	labelSelector, err := labels.Parse("app=foo")
+	assert.Nil(t, err)
 
 	collector := kubernetesCollector{
 		k8sCollectorSettings: k8sCollectorSettings{clusterNameLabel: "clusterName"},
-		updater:              mockUpdater,
+		labelSelector:        labelSelector,
 	}
 
 	pod := k8sapiv1.Pod{
@@ -565,8 +572,20 @@ func TestKubernetesUpdate(t *testing.T) {
 		},
 	}
 
-	mockUpdater.EXPECT().Replace(
-		[]api.Cluster{
+	listOptions := k8smetav1.ListOptions{
+		LabelSelector:  labelSelector.String(),
+		TimeoutSeconds: ptr.Int64(1),
+	}
+
+	podsIface := NewMockPodInterface(ctrl)
+	podsIface.EXPECT().List(listOptions).Return(&k8sapiv1.PodList{Items: []k8sapiv1.Pod{pod}}, nil)
+
+	clusters, err := collector.getClusters(podsIface)
+	assert.Nil(t, err)
+	assert.ArrayEqual(
+		t,
+		clusters,
+		api.Clusters{
 			{
 				Name: "cluster",
 				Instances: []api.Instance{
@@ -581,10 +600,6 @@ func TestKubernetesUpdate(t *testing.T) {
 			},
 		},
 	)
-
-	collector.update([]k8sapiv1.Pod{pod})
-
-	ctrl.Finish()
 }
 
 func TestCmd(t *testing.T) {
