@@ -19,7 +19,7 @@ package adapter
 import (
 	"io"
 	"net"
-	"os"
+	"sync"
 	"time"
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
@@ -123,7 +123,7 @@ func NewXDS(
 		server:           server.NewServer(snapshotCache, consumer),
 		logServer:        als,
 		resolvedAddrChan: make(chan string, 1),
-		closers:          []io.Closer{stats},
+		closers:          &closeOnce{closers: []io.Closer{stats}},
 	}, nil
 }
 
@@ -136,13 +136,13 @@ type xds struct {
 	resolvedAddr     string
 	resolvedAddrChan chan string
 	gRPCServer       *grpc.Server
-	closers          []io.Closer
-	signalChan       chan os.Signal
+	closers          *closeOnce
 }
 
 func (x *xds) Run() error {
 	lis, err := net.Listen("tcp", x.addr)
 	if err != nil {
+		x.closers.Close()
 		return err
 	}
 
@@ -166,6 +166,7 @@ func (x *xds) Run() error {
 
 	defer console.Info().Println("grpc server exit")
 	if err := x.gRPCServer.Serve(lis); err != nil {
+		x.closers.Close()
 		x.gRPCServer = nil
 		return err
 	}
@@ -187,19 +188,10 @@ func (x *xds) Addr() string {
 	return x.resolvedAddr
 }
 
-func (x *xds) runClosers() {
-	for _, c := range x.closers {
-		if err := c.Close(); err != nil {
-			console.Error().Println("close error:", err)
-		}
-	}
-	x.closers = nil
-}
-
 func (x *xds) Stop() {
 	if x.gRPCServer != nil {
 		console.Info().Println("Stopping XDS gRPC server")
-		defer x.runClosers()
+		defer x.closers.Close()
 
 		timer := time.AfterFunc(15*time.Second, func() {
 			console.Error().Println("Graceful stop timeout: Forcing XDS gRPC server to stop")
@@ -209,4 +201,20 @@ func (x *xds) Stop() {
 
 		x.gRPCServer.GracefulStop()
 	}
+}
+
+type closeOnce struct {
+	closers []io.Closer
+	once    sync.Once
+}
+
+func (o *closeOnce) Close() {
+	o.once.Do(func() {
+		for _, c := range o.closers {
+			if err := c.Close(); err != nil {
+				console.Error().Println("close error:", err)
+			}
+		}
+		o.closers = nil
+	})
 }

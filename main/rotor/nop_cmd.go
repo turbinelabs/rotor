@@ -17,8 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"os"
+	"os/signal"
+
 	"github.com/turbinelabs/cli/command"
 	"github.com/turbinelabs/rotor"
+	"github.com/turbinelabs/rotor/updater"
+	"github.com/turbinelabs/rotor/xds/adapter"
 )
 
 const (
@@ -50,8 +55,35 @@ func (r nopRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	if err != nil {
 		return cmd.Error(err)
 	}
-	if err := xds.Run(); err != nil {
+
+	signals := updater.SignalNotifier()
+	if err := runXDS(xds, signals); err != nil {
 		return cmd.Error(err)
 	}
 	return command.NoError()
+}
+
+func runXDS(xds adapter.XDS, signals chan os.Signal) error {
+	// In the event of a terminating signal, we want the main goroutine to survive
+	// until XDS.Stop() completes (to allow stats to be flushed). So run XDS in a
+	// separate goroutine and handle the XDS.Stop() call here.
+
+	xdsResult := make(chan error)
+	go func() {
+		xdsResult <- xds.Run()
+	}()
+
+	for {
+		select {
+		case err := <-xdsResult:
+			signal.Stop(signals)
+			return err
+
+		case <-signals:
+			// Trigger XDS shutdown and loop around to wait for the xdsResult
+			// channel. Stop signals to avoid repeat calls to Stop.
+			signal.Stop(signals)
+			xds.Stop()
+		}
+	}
 }
