@@ -69,7 +69,7 @@ type awsClient interface {
 		taskARN ...arn,
 	) (map[arn]taskInst, error)
 
-	// GetContainerInstances loads descrptions of live ContainerInstances into a
+	// GetContainerInstances loads descriptions of live ContainerInstances into a
 	// map (from ARN to descrption). If a task ARN has already been looked up
 	// (determined by checking for its presence in the hasInst map) then it is
 	// removed from the ARNs requested.

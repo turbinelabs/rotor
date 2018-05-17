@@ -19,13 +19,16 @@ package aws
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/golang/mock/gomock"
 
 	"github.com/turbinelabs/api"
+	"github.com/turbinelabs/cli/command"
 	"github.com/turbinelabs/rotor"
+	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/test/assert"
 )
 
@@ -39,12 +42,69 @@ func mkAwsCollector() awsCollector {
 }
 
 func TestAWSCmd(t *testing.T) {
-	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(nil)
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
 	cmd := AWSCmd(mockUpdaterFromFlags)
 	cmd.Flags.Parse([]string{})
 	runner := cmd.Runner.(*awsRunner)
 	assert.NonNil(t, runner.awsFlags)
 	assert.Equal(t, runner.updaterFlags, mockUpdaterFromFlags)
+}
+
+func TestAWSRunnerRun(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdater := updater.NewMockUpdater(ctrl)
+	mockUpdater.EXPECT().Delay().Return(time.Minute)
+	mockUpdater.EXPECT().Close().Return(nil)
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+	mockUpdaterFromFlags.EXPECT().Validate().Return(nil)
+	mockUpdaterFromFlags.EXPECT().Make().Return(mockUpdater, nil)
+
+	sync := make(chan struct{}, 1)
+
+	mockEC2Client := newMockEc2Interface(ctrl)
+	mockEC2Client.EXPECT().
+		DescribeInstances(
+			&ec2.DescribeInstancesInput{
+				Filters: []*ec2.Filter{
+					{
+						Name:   aws.String("instance-state-name"),
+						Values: []*string{aws.String("running")},
+					},
+					{
+						Name:   aws.String("vpc-id"),
+						Values: []*string{aws.String("vpc")},
+					},
+				},
+			},
+		).
+		Return(nil, errors.New("boom")).
+		Do(func(_ *ec2.DescribeInstancesInput) {
+			sync <- struct{}{}
+		})
+
+	mockClientFromFlags := newMockClientFromFlags(ctrl)
+	mockClientFromFlags.EXPECT().MakeEC2Client().Return(mockEC2Client)
+
+	cmd := AWSCmd(mockUpdaterFromFlags)
+	r := cmd.Runner.(*awsRunner)
+	r.awsFlags = mockClientFromFlags
+	r.settings.vpcID = "vpc"
+
+	result := make(chan command.CmdErr, 1)
+	go func() {
+		result <- r.Run(cmd, nil)
+	}()
+
+	<-sync
+
+	updater.StopLoop()
+	assert.Equal(t, <-result, command.NoError())
 }
 
 func TestAWSRunnerProcessFilters(t *testing.T) {
@@ -79,12 +139,12 @@ func TestAWSRunnerRunBadUpdaterFlags(t *testing.T) {
 
 	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
 
-	kr := awsRunner{updaterFlags: mockUpdaterFromFlags}
+	ar := awsRunner{updaterFlags: mockUpdaterFromFlags}
 
 	err := errors.New("boom")
 	mockUpdaterFromFlags.EXPECT().Validate().Return(err)
 
-	cmdErr := kr.Run(AWSCmd(mockUpdaterFromFlags), nil)
+	cmdErr := ar.Run(AWSCmd(mockUpdaterFromFlags), nil)
 	assert.Equal(t, cmdErr.Message, "aws: "+err.Error())
 }
 
@@ -94,13 +154,13 @@ func TestAWSRunnerRunMakeUpdaterError(t *testing.T) {
 
 	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
 
-	kr := awsRunner{updaterFlags: mockUpdaterFromFlags}
+	ar := awsRunner{updaterFlags: mockUpdaterFromFlags}
 
 	err := errors.New("boom")
 	mockUpdaterFromFlags.EXPECT().Validate().Return(nil)
 	mockUpdaterFromFlags.EXPECT().Make().Return(nil, err)
 
-	cmdErr := kr.Run(AWSCmd(mockUpdaterFromFlags), nil)
+	cmdErr := ar.Run(AWSCmd(mockUpdaterFromFlags), nil)
 	assert.Equal(t, cmdErr.Message, "aws: "+err.Error())
 }
 
@@ -133,7 +193,7 @@ func TestAWSCollectorMkFilters(t *testing.T) {
 	assert.HasSameElements(t, c.mkFilters(), wantFilters)
 }
 
-func TestAWSProcessEC2InstanceTwoClustersExistingCluster(t *testing.T) {
+func TestAWSCollectorProcessEC2InstanceTwoClustersExistingCluster(t *testing.T) {
 	inst := &ec2.Instance{
 		PrivateIpAddress: aws.String("1.2.3.4"),
 		Tags: []*ec2.Tag{
@@ -200,7 +260,7 @@ func TestAWSProcessEC2InstanceTwoClustersExistingCluster(t *testing.T) {
 	assert.HasSameElements(t, clusters["c1"].Instances, wantClusters["c1"].Instances)
 }
 
-func TestAWSProcessEC2InstanceNoClusters(t *testing.T) {
+func TestAWSCollectorProcessEC2InstanceNoClusters(t *testing.T) {
 	inst := &ec2.Instance{
 		PrivateIpAddress: aws.String("1.2.3.4"),
 		Tags: []*ec2.Tag{
@@ -226,11 +286,14 @@ func TestAWSProcessEC2InstanceNoClusters(t *testing.T) {
 	assert.DeepEqual(t, clusters, clusters)
 }
 
-func TestAWSReservationsToClusters(t *testing.T) {
+func TestAWSCollectorGetClusters(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
 	defer ctrl.Finish()
 
+	mockEC2Svc := newMockEc2Interface(ctrl)
+
 	c := mkAwsCollector()
+	c.ec2Svc = mockEC2Svc
 
 	reservations := []*ec2.Reservation{
 		{
@@ -250,9 +313,15 @@ func TestAWSReservationsToClusters(t *testing.T) {
 		},
 	}
 
+	mockEC2Svc.EXPECT().
+		DescribeInstances(&ec2.DescribeInstancesInput{Filters: c.mkFilters()}).
+		Return(&ec2.DescribeInstancesOutput{Reservations: reservations}, nil)
+
+	clusters, err := c.getClusters()
+	assert.Nil(t, err)
 	assert.ArrayEqual(
 		t,
-		c.reservationsToClusters(reservations),
+		clusters,
 		[]api.Cluster{
 			{
 				Name: "c1",
@@ -284,6 +353,24 @@ func TestAWSReservationsToClusters(t *testing.T) {
 			},
 		},
 	)
+}
+
+func TestAWSCollectorGetClustersError(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockEC2Svc := newMockEc2Interface(ctrl)
+
+	c := mkAwsCollector()
+	c.ec2Svc = mockEC2Svc
+
+	mockEC2Svc.EXPECT().
+		DescribeInstances(&ec2.DescribeInstancesInput{Filters: c.mkFilters()}).
+		Return(nil, errors.New("boom"))
+
+	clusters, err := c.getClusters()
+	assert.Nil(t, clusters)
+	assert.ErrorContains(t, err, "boom")
 }
 
 func TestAWSTagAndPortMap(t *testing.T) {

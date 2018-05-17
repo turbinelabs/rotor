@@ -16,25 +16,32 @@ limitations under the License.
 
 package aws
 
+//go:generate $TBN_HOME/scripts/mockgen_internal.sh -type clientFromFlags -source $GOFILE -destination mock_$GOFILE -package $GOPACKAGE --write_package_comment=false
+
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	ec2 "github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ecs"
 	tbnflag "github.com/turbinelabs/nonstdlib/flag"
 	"github.com/turbinelabs/nonstdlib/flag/usage"
 )
 
-// sessionFromFlags represents the command-line flags specifying configuration of
-// an AWS client session.
-type sessionFromFlags interface {
-	// Make produces an AWS client session
-	Make() *session.Session
+// clientFromFlags represents the command-line flags specifying configuration of
+// an AWS client and its underlying session.
+type clientFromFlags interface {
+	// MakeEC2Client produces an EC2 interface from a new AWS client session.
+	MakeEC2Client() ec2Interface
+
+	// MakeAWSClient produces an AWS interface from a new AWS client session.
+	MakeAWSClient() awsClient
 }
 
-// NewFromFlags produces a FromFlags, adding necessary flags to the provided
-// flag.FlagSet
-func newSessionFromFlags(fs tbnflag.FlagSet) sessionFromFlags {
-	ff := &sessionFromFlagsImpl{}
+// newClientFromFlags produces a clientFromFlags, adding necessary flags to the
+// provided flag.FlagSet.
+func newClientFromFlags(fs tbnflag.FlagSet) clientFromFlags {
+	ff := &clientFromFlagsImpl{}
 
 	fs.StringVar(
 		&ff.awsRegion,
@@ -47,26 +54,26 @@ func newSessionFromFlags(fs tbnflag.FlagSet) sessionFromFlags {
 		&ff.awsSecretAccessKey,
 		"aws.secret-access-key",
 		"",
-		usage.Required("The AWS API secret access key"),
+		usage.Required(usage.Sensitive("The AWS API secret access key")),
 	)
 
 	fs.StringVar(
 		&ff.awsAccessKeyID,
 		"aws.access-key-id",
 		"",
-		usage.Required("The AWS API access key ID"),
+		usage.Required(usage.Sensitive("The AWS API access key ID")),
 	)
 
 	return ff
 }
 
-type sessionFromFlagsImpl struct {
+type clientFromFlagsImpl struct {
 	awsRegion          string
 	awsSecretAccessKey string
 	awsAccessKeyID     string
 }
 
-func (ff *sessionFromFlagsImpl) Make() *session.Session {
+func (ff *clientFromFlagsImpl) makeSession() *session.Session {
 	return session.New(&aws.Config{
 		Region: aws.String(ff.awsRegion),
 		Credentials: credentials.NewStaticCredentials(
@@ -75,4 +82,13 @@ func (ff *sessionFromFlagsImpl) Make() *session.Session {
 			"",
 		),
 	})
+}
+
+func (ff *clientFromFlagsImpl) MakeEC2Client() ec2Interface {
+	return ec2.New(ff.makeSession())
+}
+
+func (ff *clientFromFlagsImpl) MakeAWSClient() awsClient {
+	s := ff.makeSession()
+	return newAwsClient(ecs.New(s), ec2.New(s))
 }

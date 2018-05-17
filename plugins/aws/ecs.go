@@ -19,9 +19,6 @@ package aws
 import (
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/ecs"
-
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/cli/command"
 	tbnflag "github.com/turbinelabs/nonstdlib/flag"
@@ -57,7 +54,7 @@ func (cfg ecsSettings) Validate(aws awsClient) error {
 type ecsRunner struct {
 	cfg ecsSettings
 
-	awsFlags     sessionFromFlags
+	awsFlags     clientFromFlags
 	updaterFlags rotor.UpdaterFromFlags
 }
 
@@ -79,8 +76,9 @@ func ECSCmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 		&runner.cfg.clusters,
 		"clusters",
 		usage.Required(
-			"a comma separated list indicating which ECS Clusters "+
-				"should be examined for containers marked for inclusion as API Clusters",
+			"Specifies a comma separated list indicating which ECS clusters "+
+				"should be examined for containers marked for inclusion as API clusters. "+
+				"No value means all clusters will be examined.",
 		),
 	)
 
@@ -90,7 +88,7 @@ func ECSCmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 		ecsDefaultClusterTag,
 		"label indicating what API clusters an instance of this container will serve")
 
-	runner.awsFlags = newSessionFromFlags(flags)
+	runner.awsFlags = newClientFromFlags(flags)
 	runner.updaterFlags = updaterFlags
 
 	return cmd
@@ -101,8 +99,7 @@ func (r ecsRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.BadInput(err)
 	}
 
-	awsSession := r.awsFlags.Make()
-	awsSvc := newAwsClient(ecs.New(awsSession), ec2.New(awsSession))
+	awsSvc := r.awsFlags.MakeAWSClient()
 	if err := r.cfg.Validate(awsSvc); err != nil {
 		return cmd.BadInput(err)
 	}

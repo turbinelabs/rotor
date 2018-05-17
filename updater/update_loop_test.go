@@ -188,3 +188,36 @@ func TestUpdateLooperError(t *testing.T) {
 		wait()
 	})
 }
+
+func TestStopAllLoops(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdater := NewMockUpdater(ctrl)
+	mockUpdater.EXPECT().Delay().Return(time.Hour)
+	mockUpdater.EXPECT().Close().Return(nil)
+
+	gets := make(chan struct{}, 1)
+	done := make(chan struct{}, 1)
+
+	go func() {
+		Loop(mockUpdater, func() ([]api.Cluster, error) {
+			gets <- struct{}{}
+			return nil, errors.New("get error")
+		})
+
+		// Signal Loop completed
+		done <- struct{}{}
+	}()
+
+	// Wait for first get (to be sure that the signal channel is ready).
+	<-gets
+
+	StopLoop()
+
+	// Wait for completion.
+	<-done
+
+	// No other gets occurred.
+	assert.ChannelEmpty(t, gets)
+}

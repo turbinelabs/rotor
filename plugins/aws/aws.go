@@ -103,7 +103,7 @@ func AWSCmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 			"See http://goo.gl/kSCOHS for a discussion of available filters.",
 	)
 
-	runner.awsFlags = newSessionFromFlags(flags)
+	runner.awsFlags = newClientFromFlags(flags)
 	runner.updaterFlags = updaterFlags
 
 	return cmd
@@ -119,7 +119,7 @@ type awsCollectorSettings struct {
 type awsRunner struct {
 	filterStrs   tbnflag.Strings
 	settings     awsCollectorSettings
-	awsFlags     sessionFromFlags
+	awsFlags     clientFromFlags
 	updaterFlags rotor.UpdaterFromFlags
 }
 
@@ -143,7 +143,7 @@ func (r *awsRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 
 	c := awsCollector{
 		settings: r.settings,
-		ec2Svc:   ec2.New(r.awsFlags.Make()),
+		ec2Svc:   r.awsFlags.MakeEC2Client(),
 	}
 
 	updater.Loop(u, c.getClusters)
@@ -166,7 +166,7 @@ func (r *awsRunner) processFilters(strs []string) (map[string][]string, error) {
 
 type awsCollector struct {
 	settings awsCollectorSettings
-	ec2Svc   *ec2.EC2
+	ec2Svc   ec2Interface
 }
 
 func (c awsCollector) getClusters() ([]api.Cluster, error) {
