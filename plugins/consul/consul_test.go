@@ -20,11 +20,15 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	consulapi "github.com/hashicorp/consul/api"
 
 	"github.com/turbinelabs/api"
+	"github.com/turbinelabs/cli/command"
+	"github.com/turbinelabs/rotor"
+	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/test/assert"
 )
 
@@ -66,7 +70,7 @@ type stubGetServiceDetail struct {
 	result   map[string][]interface{}
 }
 
-func NewStubGetServiceDetail(t *testing.T, dc, tag string) stubGetServiceDetail {
+func newStubGetServiceDetail(t *testing.T, dc, tag string) stubGetServiceDetail {
 	return stubGetServiceDetail{
 		svcTag:   tag,
 		dc:       dc,
@@ -100,10 +104,13 @@ func (s *stubGetServiceDetail) Fn() getConsulServiceDetailFn {
 				fnerr = r[1].(error)
 			}
 			return r[0].(consulServiceDetail), fnerr
-		} else {
-			assert.Failed(s.t, fmt.Sprintf("did not expect requset for details of service %s", svcName))
-			return consulServiceDetail{}, nil
 		}
+
+		assert.Failed(
+			s.t,
+			fmt.Sprintf("did not expect requset for details of service %s", svcName),
+		)
+		return consulServiceDetail{}, nil
 	}
 }
 
@@ -120,7 +127,7 @@ type stubGetNodeHealth struct {
 	result   map[string][]interface{}
 }
 
-func NewStubGetNodeHealth(t *testing.T, dc string) stubGetNodeHealth {
+func newStubGetNodeHealth(t *testing.T, dc string) stubGetNodeHealth {
 	return stubGetNodeHealth{dc, t, 0, map[string]bool{}, map[string][]interface{}{}}
 }
 
@@ -141,7 +148,10 @@ func (s *stubGetNodeHealth) Fn() getConsulNodeHealthFn {
 
 		r, expected := s.result[node]
 		if !expected {
-			assert.Failed(s.t, fmt.Sprintf("did not expect requset for details of service %s", node))
+			assert.Failed(
+				s.t,
+				fmt.Sprintf("did not expect requset for details of service %s", node),
+			)
 		}
 
 		var fnerr error
@@ -156,7 +166,7 @@ func (s *stubGetNodeHealth) Verify() {
 	assert.Equal(s.t, s.calls, len(s.result))
 }
 
-func NewStubMkClusters(
+func newStubMkClusters(
 	t *testing.T,
 	hitErr error,
 	svcTag string,
@@ -166,7 +176,11 @@ func NewStubMkClusters(
 ) (mkClusterFn, func()) {
 	calls := 0
 
-	fn := func(st string, sd map[string]consulServiceDetail, nh map[string]nodeHealth) api.Clusters {
+	fn := func(
+		st string,
+		sd map[string]consulServiceDetail,
+		nh map[string]nodeHealth,
+	) api.Clusters {
 		if hitErr != nil {
 			assert.Failed(
 				t,
@@ -223,7 +237,7 @@ func (tc testConsulGetClustersCase) run(t *testing.T) {
 
 	hitErr = tc.getServicesErr
 
-	getSvcDetail := NewStubGetServiceDetail(t, testdc, svctag)
+	getSvcDetail := newStubGetServiceDetail(t, testdc, svctag)
 	svcDetails := map[string]consulServiceDetail{
 		"svca": {
 			"svca",
@@ -276,7 +290,7 @@ func (tc testConsulGetClustersCase) run(t *testing.T) {
 		},
 		"n5": {},
 	}
-	getNodeHealth := NewStubGetNodeHealth(t, testdc)
+	getNodeHealth := newStubGetNodeHealth(t, testdc)
 	nhVerifyFn := getNodeHealth.Verify
 	if hitErr == nil {
 		for _, nid := range []string{"n1", "n2", "n5"} {
@@ -298,7 +312,7 @@ func (tc testConsulGetClustersCase) run(t *testing.T) {
 		{ClusterKey: "someasnuthoeus3"},
 	}
 
-	mkClusterFn, mkClusterVerify := NewStubMkClusters(
+	mkClusterFn, mkClusterVerify := newStubMkClusters(
 		t, hitErr, svctag, svcDetails, nodeHealth, wantClusters)
 	defer mkClusterVerify()
 
@@ -616,10 +630,10 @@ func TestGetConsulNodeHealth(t *testing.T) {
 		{Node: tgt, Status: "critical"},
 	}
 
-	healthApi := newMockHealthInterface(ctrl)
-	healthApi.EXPECT().Node(tgt, opts).Return(health, nil, nil)
+	healthAPI := newMockHealthInterface(ctrl)
+	healthAPI.EXPECT().Node(tgt, opts).Return(health, nil, nil)
 
-	got, gotErr := getConsulNodeHealth(healthApi, testdc, tgt)
+	got, gotErr := getConsulNodeHealth(healthAPI, testdc, tgt)
 	assert.Nil(t, gotErr)
 	assert.DeepEqual(t, got, health)
 }
@@ -634,10 +648,205 @@ func TestGetConsulNodeHealthError(t *testing.T) {
 		{Node: tgt, Status: "critical"},
 	}
 
-	healthApi := newMockHealthInterface(ctrl)
-	healthApi.EXPECT().Node(tgt, opts).Return(health, nil, err)
+	healthAPI := newMockHealthInterface(ctrl)
+	healthAPI.EXPECT().Node(tgt, opts).Return(health, nil, err)
 
-	got, gotErr := getConsulNodeHealth(healthApi, testdc, tgt)
+	got, gotErr := getConsulNodeHealth(healthAPI, testdc, tgt)
 	assert.DeepEqual(t, gotErr, err)
 	assert.Nil(t, got)
+}
+
+func TestCmd(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	assert.SameInstance(t, r.updaterFlags, mockUpdaterFromFlags)
+	assert.NonNil(t, r.endpoint)
+}
+
+func TestConsulRunnerRun(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	sync := make(chan struct{}, 1)
+
+	mockUpdater := updater.NewMockUpdater(ctrl)
+	mockUpdater.EXPECT().Delay().Return(time.Minute)
+	mockUpdater.EXPECT().Close().Return(nil)
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+	mockUpdaterFromFlags.EXPECT().Validate().Return(nil)
+	mockUpdaterFromFlags.EXPECT().Make().Return(mockUpdater, nil)
+
+	mockConsulHealth := newMockHealthInterface(ctrl)
+
+	mockConsulCatalog := newMockCatalogInterface(ctrl)
+	mockConsulCatalog.EXPECT().Datacenters().Return([]string{"dc"}, nil)
+	mockConsulCatalog.EXPECT().
+		Services(gomock.Any()).
+		Return(nil, nil, errors.New("boom")).
+		Do(func(_ *consulapi.QueryOptions) { sync <- struct{}{} })
+
+	mockConsulClient := newMockConsulClient(ctrl)
+	mockConsulClient.EXPECT().Catalog().Return(mockConsulCatalog).AnyTimes()
+	mockConsulClient.EXPECT().Health().Return(mockConsulHealth)
+
+	mockGetClient := newMockGetClientInterface(ctrl)
+	mockGetClient.EXPECT().getClient().Return(mockConsulClient, nil)
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	r.consulSettings.endpoint = mockGetClient
+	r.consulSettings.consulDC = "dc"
+
+	result := make(chan command.CmdErr, 1)
+	go func() {
+		result <- r.Run(cmd, nil)
+	}()
+
+	<-sync
+
+	updater.StopLoop()
+	assert.Equal(t, <-result, command.NoError())
+}
+
+func TestConsulRunnerRunNoDC(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	cmdErr := r.Run(cmd, nil)
+	assert.StringContains(t, cmdErr.Message, "datacenter must be specified")
+}
+
+func TestConsulRunnerRunBadUpdaterFlags(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+	mockUpdaterFromFlags.EXPECT().Validate().Return(errors.New("bad updater flags"))
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	r.consulSettings.consulDC = "dc"
+
+	cmdErr := r.Run(cmd, nil)
+	assert.StringContains(t, cmdErr.Message, "bad updater flags")
+}
+
+func TestConsulRunnerRunUpdaterMakeError(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+	mockUpdaterFromFlags.EXPECT().Validate().Return(nil)
+	mockUpdaterFromFlags.EXPECT().Make().Return(nil, errors.New("updater failed"))
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	r.consulSettings.consulDC = "dc"
+
+	cmdErr := r.Run(cmd, nil)
+	assert.StringContains(t, cmdErr.Message, "updater failed")
+}
+
+func TestConsulRunnerRunConsulClientError(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdater := updater.NewMockUpdater(ctrl)
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+	mockUpdaterFromFlags.EXPECT().Validate().Return(nil)
+	mockUpdaterFromFlags.EXPECT().Make().Return(mockUpdater, nil)
+
+	mockGetClient := newMockGetClientInterface(ctrl)
+	mockGetClient.EXPECT().getClient().Return(nil, errors.New("consul client error"))
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	r.consulSettings.endpoint = mockGetClient
+	r.consulSettings.consulDC = "dc"
+
+	cmdErr := r.Run(cmd, nil)
+	assert.StringContains(t, cmdErr.Message, "consul client error")
+}
+
+func TestConsulRunnerRunConsulDatacentersError(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdater := updater.NewMockUpdater(ctrl)
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+	mockUpdaterFromFlags.EXPECT().Validate().Return(nil)
+	mockUpdaterFromFlags.EXPECT().Make().Return(mockUpdater, nil)
+
+	mockConsulCatalog := newMockCatalogInterface(ctrl)
+	mockConsulCatalog.EXPECT().Datacenters().Return(nil, errors.New("datacenters lookup error"))
+
+	mockConsulClient := newMockConsulClient(ctrl)
+	mockConsulClient.EXPECT().Catalog().Return(mockConsulCatalog).AnyTimes()
+
+	mockGetClient := newMockGetClientInterface(ctrl)
+	mockGetClient.EXPECT().getClient().Return(mockConsulClient, nil)
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	r.consulSettings.endpoint = mockGetClient
+	r.consulSettings.consulDC = "dc"
+
+	cmdErr := r.Run(cmd, nil)
+	assert.StringContains(t, cmdErr.Message, "datacenters lookup error")
+}
+
+func TestConsulRunnerRunConsulDatacenterNotFound(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockUpdater := updater.NewMockUpdater(ctrl)
+
+	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+	mockUpdaterFromFlags.EXPECT().Validate().Return(nil)
+	mockUpdaterFromFlags.EXPECT().Make().Return(mockUpdater, nil)
+
+	mockConsulCatalog := newMockCatalogInterface(ctrl)
+	mockConsulCatalog.EXPECT().Datacenters().Return([]string{"dc"}, nil)
+
+	mockConsulClient := newMockConsulClient(ctrl)
+	mockConsulClient.EXPECT().Catalog().Return(mockConsulCatalog).AnyTimes()
+
+	mockGetClient := newMockGetClientInterface(ctrl)
+	mockGetClient.EXPECT().getClient().Return(mockConsulClient, nil)
+
+	cmd := Cmd(mockUpdaterFromFlags)
+	cmd.Flags.Parse([]string{})
+
+	r := cmd.Runner.(*consulRunner)
+	r.consulSettings.endpoint = mockGetClient
+	r.consulSettings.consulDC = "other-dc"
+
+	cmdErr := r.Run(cmd, nil)
+	assert.StringContains(t, cmdErr.Message, "Datacenter other-dc was not found")
 }
