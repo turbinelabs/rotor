@@ -84,6 +84,13 @@ func NewXDSFromFlags(
 		"The default request timeout, if none is specified in the RetryPolicy for a Route",
 	)
 
+	flags.BoolVar(
+		&ff.resolveDNS,
+		"resolve-dns",
+		false,
+		"If true, resolve EDS hostnames to IP addresses.",
+	)
+
 	return ff
 }
 
@@ -94,6 +101,7 @@ type xdsFromFlags struct {
 	grpcLogTopInterval time.Duration
 	statsFromFlags     stats.FromFlags
 	defaultTimeout     time.Duration
+	resolveDNS         bool
 }
 
 func (ff *xdsFromFlags) Make(registrar poller.Registrar) (XDS, error) {
@@ -107,6 +115,7 @@ func (ff *xdsFromFlags) Make(registrar poller.Registrar) (XDS, error) {
 		registrar,
 		ff.caFile,
 		ff.defaultTimeout,
+		ff.resolveDNS,
 		stats,
 		WithTopResponseLog(ff.grpcLogTopN, ff.grpcLogTopInterval),
 	)

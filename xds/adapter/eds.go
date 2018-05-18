@@ -19,6 +19,7 @@ package adapter
 import (
 	"errors"
 	"fmt"
+	"net"
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
@@ -33,33 +34,60 @@ import (
 
 const envoyLb = "envoy.lb"
 
+type eds struct {
+	resolveDNS func(string) ([]net.IP, error)
+}
+
 // edsResourceAdapter turns poller.Objects into Endpoint cache.Resources
-func edsResourceAdapter(objects *poller.Objects) (cache.Resources, error) {
+func (e eds) edsResourceAdapter(objects *poller.Objects) (cache.Resources, error) {
 	resources := make(map[string]cache.Resource, len(objects.Clusters))
 	for _, cluster := range objects.Clusters {
-		la := tbnClusterToEnvoyLoadAssignment(cluster)
+		la, err := e.tbnClusterToEnvoyLoadAssignment(cluster)
+		if err != nil {
+			return cache.Resources{}, err
+		}
 		resources[la.GetClusterName()] = la
 	}
 	return cache.Resources{Version: objects.TerribleHash(), Items: resources}, nil
 }
 
-func tbnClusterToEnvoyLoadAssignment(tbnCluster tbnapi.Cluster) *envoyapi.ClusterLoadAssignment {
+func (e eds) tbnClusterToEnvoyLoadAssignment(
+	tbnCluster tbnapi.Cluster,
+) (*envoyapi.ClusterLoadAssignment, error) {
 	lbEndpoints := []envoyendpoint.LbEndpoint{}
 	for _, instance := range tbnCluster.Instances {
-		lbEndpoint := envoyendpoint.LbEndpoint{
-			Endpoint: &envoyendpoint.Endpoint{
-				Address: mkEnvoyAddress(instance.Host, instance.Port),
-			},
-			HealthStatus: envoycore.HealthStatus_HEALTHY,
-			Metadata:     toEnvoyMetadata(instance.Metadata),
+		if e.resolveDNS == nil {
+			lbEndpoints = append(
+				lbEndpoints,
+				mkEnvoyLbEndpoint(instance.Host, instance.Port, instance.Metadata),
+			)
+		} else {
+			ips, err := e.resolveDNS(instance.Host)
+			if err != nil {
+				return nil, err
+			}
+			for _, ip := range ips {
+				lbEndpoints = append(
+					lbEndpoints,
+					mkEnvoyLbEndpoint(ip.String(), instance.Port, instance.Metadata),
+				)
+			}
 		}
-
-		lbEndpoints = append(lbEndpoints, lbEndpoint)
 	}
 
 	return &envoyapi.ClusterLoadAssignment{
 		ClusterName: tbnCluster.Name,
 		Endpoints:   []envoyendpoint.LocalityLbEndpoints{{LbEndpoints: lbEndpoints}},
+	}, nil
+}
+
+func mkEnvoyLbEndpoint(host string, port int, metadata tbnapi.Metadata) envoyendpoint.LbEndpoint {
+	return envoyendpoint.LbEndpoint{
+		Endpoint: &envoyendpoint.Endpoint{
+			Address: mkEnvoyAddress(host, port),
+		},
+		HealthStatus: envoycore.HealthStatus_HEALTHY,
+		Metadata:     toEnvoyMetadata(metadata),
 	}
 }
 

@@ -91,6 +91,7 @@ func NewXDS(
 	registrar poller.Registrar,
 	caFile string,
 	defaultTimeout time.Duration,
+	resolveDNS bool,
 	stats stats.Stats,
 	options ...XDSOption,
 ) (XDS, error) {
@@ -105,6 +106,7 @@ func NewXDS(
 		ldsConfig,
 		caFile,
 		defaultTimeout,
+		resolveDNS,
 	)
 
 	alsReporterConfig := alsReporterConfig{}

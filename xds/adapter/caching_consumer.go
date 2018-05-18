@@ -46,12 +46,13 @@ func newCachingConsumer(
 	listenerConfig listenerAdapterConfig,
 	caFile string,
 	defaultTimeout time.Duration,
+	resolveDNS bool,
 ) cachingConsumer {
 	return registeringCachingConsumer{
 		cache:     cache,
 		registrar: registrar,
 		adapt: newSnapshotAdapter(
-			newEndpointAdapter(),
+			newEndpointAdapter(resolveDNS),
 			newClusterAdapter(caFile),
 			newRouteAdapter(defaultTimeout),
 			newListenerAdapter(listenerConfig),

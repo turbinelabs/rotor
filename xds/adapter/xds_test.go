@@ -47,6 +47,7 @@ func TestNewXDS(t *testing.T) {
 		poller.NewNopRegistrar(),
 		"",
 		defaultDefaultTimeout,
+		false,
 		mockStats,
 		WithTopResponseLog(-1, time.Second),
 	)
@@ -60,6 +61,7 @@ func TestNewXDS(t *testing.T) {
 		poller.NewNopRegistrar(),
 		"",
 		defaultDefaultTimeout,
+		false,
 		mockStats,
 	)
 	assert.NonNil(t, x)
@@ -80,6 +82,7 @@ func TestXDSLifecycle(t *testing.T) {
 		poller.NewNopRegistrar(),
 		"",
 		defaultDefaultTimeout,
+		false,
 		mockStats,
 	)
 	assert.Nil(t, err)
@@ -145,6 +148,7 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 		poller.NewNopRegistrar(),
 		"",
 		defaultDefaultTimeout,
+		false,
 		mockStats,
 	)
 	assert.Nil(t, err)

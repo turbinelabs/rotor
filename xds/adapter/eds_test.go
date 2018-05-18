@@ -17,6 +17,7 @@ limitations under the License.
 package adapter
 
 import (
+	"net"
 	"testing"
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
@@ -53,7 +54,7 @@ func TestEmptyRequestNoClusterLoadAssignments(t *testing.T) {
 	objects := poller.MkFixtureObjects()
 	objects.Clusters = nil
 
-	resources, err := edsResourceAdapter(objects)
+	resources, err := eds{}.edsResourceAdapter(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)
@@ -62,8 +63,15 @@ func TestEmptyRequestNoClusterLoadAssignments(t *testing.T) {
 
 func TestFullRequestFullClusterLoadAssignments(t *testing.T) {
 	objects := poller.MkFixtureObjects()
+	objects.Clusters[0].Instances[0].Host = "localhost"
+	resolveDNS := func(host string) ([]net.IP, error) {
+		if host == "localhost" {
+			return []net.IP{net.ParseIP("1.1.1.1"), net.ParseIP("2.2.2.2")}, nil
+		}
+		return []net.IP{net.ParseIP(host)}, nil
+	}
 
-	resources, err := edsResourceAdapter(objects)
+	resources, err := eds{resolveDNS}.edsResourceAdapter(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)
@@ -81,7 +89,34 @@ func TestFullRequestFullClusterLoadAssignments(t *testing.T) {
 									Address: &envoycore.Address_SocketAddress{
 										SocketAddress: &envoycore.SocketAddress{
 											Protocol: envoycore.TCP,
-											Address:  "1.2.3.4",
+											Address:  "1.1.1.1",
+											PortSpecifier: &envoycore.SocketAddress_PortValue{
+												PortValue: 1234,
+											},
+										},
+									},
+								},
+							},
+							HealthStatus: envoycore.HealthStatus_HEALTHY,
+							Metadata: &envoycore.Metadata{
+								FilterMetadata: map[string]*types.Struct{
+									"envoy.lb": {
+										Fields: map[string]*types.Value{
+											"stage":      valueString("prod"),
+											"build":      valueString("cookie_monster"),
+											"sw_version": valueString("93bf93b"),
+										},
+									},
+								},
+							},
+						},
+						{
+							Endpoint: &envoyendpoint.Endpoint{
+								Address: &envoycore.Address{
+									Address: &envoycore.Address_SocketAddress{
+										SocketAddress: &envoycore.SocketAddress{
+											Protocol: envoycore.TCP,
+											Address:  "2.2.2.2",
 											PortSpecifier: &envoycore.SocketAddress_PortValue{
 												PortValue: 1234,
 											},

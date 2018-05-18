@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -83,8 +84,12 @@ func newSnapshotAdapter(
 
 // newEndpointAdapter returns a resourceAdapter that produces Endpoint
 // Resources.
-func newEndpointAdapter() resourceAdapter {
-	return edsResourceAdapter
+func newEndpointAdapter(resolveDNS bool) resourceAdapter {
+	if resolveDNS {
+		return eds{resolveDNS: net.LookupIP}.edsResourceAdapter
+	}
+	return eds{}.edsResourceAdapter
+
 }
 
 // newClusterAdapter returns a resourceAdapter that produces Cluster Resources.

@@ -42,6 +42,9 @@ func TestNewXDSFromFlags(t *testing.T) {
 	assert.Equal(t, ff.caFile, "")
 	flagset.Parse([]string{"--ca-file=/etc/tls/ca.pem"})
 	assert.Equal(t, ff.caFile, "/etc/tls/ca.pem")
+	assert.False(t, ff.resolveDNS)
+	flagset.Parse([]string{"--resolve-dns"})
+	assert.True(t, ff.resolveDNS)
 }
 
 func TestXDSFromFlagsMake(t *testing.T) {
