@@ -61,7 +61,11 @@ Alternatively as JSON:
         ]
       }
     ]
-`
+
+Note that when updating the file, care should be taken to make the modification
+atomic. In practice, this means writing the updated file to a temporary location and
+then moving/renaming the file to the watched path. Alternatively, the watched path
+may be a symbolic link that is replaced with a reference to the updated file.`
 
 // Cmd creates the file based collector sub command
 func Cmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {

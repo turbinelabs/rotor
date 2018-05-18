@@ -62,15 +62,15 @@ type fileCollector struct {
 func (c *fileCollector) Run() error {
 	defer c.updater.Close()
 
-	if err := c.reload(); err != nil {
-		return err
-	}
-
 	events, errors, closer, err := c.startWatcher()
 	if err != nil {
 		return err
 	}
 	defer closer.Close()
+
+	if err := c.reload(); err != nil {
+		return err
+	}
 
 	signals := updater.SignalNotifier()
 	defer signal.Stop(signals)
@@ -85,6 +85,7 @@ func (c *fileCollector) reload() error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	clusters, err := c.parser(file)
 	if err != nil {
@@ -127,7 +128,12 @@ func (c *fileCollector) eventLoop(
 		select {
 		case event := <-events:
 			if event.Name == c.file {
-				console.Info().Printf("%s changed %x", event.Name, event.Op)
+				console.Info().Printf(
+					"%s changed %s (%x)",
+					event.Name,
+					event.Op.String(),
+					uint32(event.Op),
+				)
 				if event.Op&(fsnotify.Create|fsnotify.Write) != 0 {
 					c.reload()
 				} else if event.Op&(fsnotify.Remove|fsnotify.Rename) != 0 {

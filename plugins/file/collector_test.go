@@ -22,6 +22,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	fsnotify "gopkg.in/fsnotify.v1"
@@ -31,6 +32,8 @@ import (
 	tbnos "github.com/turbinelabs/nonstdlib/os"
 	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/test/assert"
+	"github.com/turbinelabs/test/check"
+	"github.com/turbinelabs/test/matcher"
 	"github.com/turbinelabs/test/tempfile"
 )
 
@@ -285,6 +288,27 @@ func TestFileCollectorReloadReadFileError(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
+func TestFileCollectorStartWatcher(t *testing.T) {
+	collector := &fileCollector{parser: mkParser(codec.NewYaml()), os: tbnos.New()}
+
+	tempDir := tempfile.TempDir(t, "filecollector-watcher")
+	defer tempDir.Cleanup()
+
+	collector.file = tempDir.Make(t)
+
+	events, errors, cleanup, err := collector.startWatcher()
+	assert.Nil(t, err)
+	defer cleanup.Close()
+
+	assert.ChannelEmpty(t, events)
+	assert.ChannelEmpty(t, errors)
+
+	newFile := tempDir.Write(t, "line\n")
+	assert.Nil(t, os.Rename(newFile, collector.file))
+
+	<-events
+}
+
 func TestFileEventLoopErrorExit(t *testing.T) {
 	testFileEventLoop(t, true)
 }
@@ -299,7 +323,7 @@ func testFileEventLoop(t *testing.T, exitOnErr bool) {
 
 	mockUpdater.EXPECT().Replace(simpleTestClusters)
 
-	tempFile, cleanup := tempfile.Write(t, SimpleYamlInput, "filecollector-reload")
+	tempFile, cleanup := tempfile.Write(t, SimpleYamlInput, "filecollector-eventloop")
 	defer cleanup()
 
 	yamlCollector.file = tempFile
@@ -342,4 +366,90 @@ func testFileEventLoop(t *testing.T, exitOnErr bool) {
 	} else {
 		assert.Nil(t, eventLoopResult)
 	}
+}
+
+func TestFileCollectorRun(t *testing.T) {
+	testFileCollectorRun(
+		t,
+		func(tempDir tempfile.Dir, file string) string { return file },
+		func(file string, newFile string) {
+			assertNilOrDie(t, os.Rename(newFile, file))
+		},
+	)
+}
+
+func assertNilOrDie(t *testing.T, i interface{}) {
+	if !check.IsNil(i) {
+		assert.Tracing(t).Fatalf("got (%T) %v, want <nil>", i, i)
+	}
+}
+
+func testFileCollectorRun(
+	t *testing.T,
+	createWatchedPath func(d tempfile.Dir, f string) string,
+	updateWatchedPath func(f string, newF string),
+) {
+	collector, ctrl, mockUpdater := makeFileCollectorAndMock(t)
+	defer ctrl.Finish()
+
+	syncCh := make(chan struct{}, 1)
+	sync := func(_ []api.Cluster) { syncCh <- struct{}{} }
+
+	gomock.InOrder(
+		mockUpdater.EXPECT().Replace(matcher.SameElements{simpleTestClusters}).Do(sync),
+		mockUpdater.EXPECT().Replace(matcher.SameElements{expectedClusters}).Do(sync).MinTimes(1),
+		mockUpdater.EXPECT().Close(),
+	)
+
+	// Need to put temp file in a directory that can be watched.
+	tempDir := tempfile.TempDir(t, "filecollector-run")
+	defer tempDir.Cleanup()
+
+	// Use a second directory for the files before they are place in the watch directory.
+	scratchDir := tempfile.TempDir(t, "filecollector-run-scratch")
+	defer scratchDir.Cleanup()
+
+	originalFile := scratchDir.Write(t, SimpleYamlInput, "create")
+	updatedFile := scratchDir.Write(t, YamlInput, "update")
+
+	collector.file = createWatchedPath(tempDir, originalFile)
+
+	result := make(chan error, 1)
+	go func() {
+		result <- collector.Run()
+	}()
+
+	<-syncCh // wait for reload
+
+	updateWatchedPath(collector.file, updatedFile)
+
+	timer := time.NewTimer(100 * time.Millisecond)
+	for {
+		select {
+		case <-syncCh:
+			// detected changed file and updated
+			updater.StopLoop()
+			assert.Nil(t, <-result)
+			return
+		case <-timer.C:
+			// handle case where we updated the file before the watcher was started
+			// by updating the file with a comment
+			updateWatchedPath(collector.file, tempDir.Write(t, YamlInput))
+			timer.Reset(100 * time.Millisecond)
+		}
+	}
+}
+
+func TestFileCollectorRunErrors(t *testing.T) {
+	collector, ctrl, mockUpdater := makeFileCollectorAndMock(t)
+	defer ctrl.Finish()
+
+	mockUpdater.EXPECT().Close()
+
+	// Need to put temp file in a director that can be watched.
+	tempDir := tempfile.TempDir(t, "filecollector-run")
+	defer tempDir.Cleanup()
+
+	collector.file = tempDir.Write(t, "this is not yaml, my dude")
+	assert.NonNil(t, collector.Run())
 }

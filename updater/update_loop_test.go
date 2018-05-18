@@ -189,7 +189,7 @@ func TestUpdateLooperError(t *testing.T) {
 	})
 }
 
-func TestStopAllLoops(t *testing.T) {
+func TestStopLoop(t *testing.T) {
 	ctrl := gomock.NewController(assert.Tracing(t))
 	defer ctrl.Finish()
 

@@ -26,7 +26,7 @@ import (
 	tbntime "github.com/turbinelabs/nonstdlib/time"
 )
 
-var lastLoopNotifier chan<- os.Signal
+var lastNotifier chan<- os.Signal
 
 // Loop is a utility function for Rotor plugins that periodically polls for
 // updates. It invokes the get function at the Updater's minimum update interval
@@ -35,23 +35,20 @@ var lastLoopNotifier chan<- os.Signal
 // Loop installs a signal handler for SIGINT and SIGTERM (viaa SignalNotifier). If it
 // receives either signal, it exits the polling loop after closing the Updater.
 func Loop(updater Updater, get func() ([]api.Cluster, error)) {
-	notifier := SignalNotifier()
-	lastLoopNotifier = notifier
-
 	looper := &updateLooper{
 		time:     tbntime.NewSource(),
-		signalCh: notifier,
+		signalCh: SignalNotifier(),
 	}
 	looper.run(updater, get)
 }
 
 // StopLoop stops a running Loop invocation by simulating a signal. This function is
-// intended for use in tests only. StopLoop assumes only one Loop is running in a
-// given process, and therefore only the most recently started Loop will receive the
-// simulated signal.
+// intended for use in tests only. StopLoop assumes only one event loop is running in
+// a given process, and therefore only the most recently created Loop or
+// SignalNotifier will receive the simulated signal.
 func StopLoop() {
-	lastLoopNotifier <- syscall.SIGINT
-	lastLoopNotifier = nil
+	lastNotifier <- syscall.SIGINT
+	lastNotifier = nil
 }
 
 // SignalNotifier creates a chan os.Signal that will receive the SIGINT and SIGTERM
@@ -61,6 +58,7 @@ func StopLoop() {
 func SignalNotifier() chan os.Signal {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	lastNotifier = signalCh
 	return signalCh
 }
 
