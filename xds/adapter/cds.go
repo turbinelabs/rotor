@@ -24,10 +24,8 @@ import (
 	envoycluster "github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
-	"github.com/gogo/protobuf/types"
 
 	tbnapi "github.com/turbinelabs/api"
-	"github.com/turbinelabs/nonstdlib/ptr"
 	"github.com/turbinelabs/rotor/xds/poller"
 )
 
@@ -103,11 +101,12 @@ func (s cds) tbnToEnvoyCluster(
 			EdsConfig:   &xdsClusterConfig,
 			ServiceName: tbnCluster.Name,
 		},
-		ConnectTimeout:  clusterConnectTimeoutSecs * time.Second,
-		LbPolicy:        envoyapi.Cluster_LEAST_REQUEST,
-		TlsContext:      tlsContext,
-		LbSubsetConfig:  subsetConfig,
-		CircuitBreakers: tbnToEnvoyCircuitBreakers(tbnCluster.CircuitBreakers),
+		ConnectTimeout:   clusterConnectTimeoutSecs * time.Second,
+		LbPolicy:         envoyapi.Cluster_LEAST_REQUEST,
+		TlsContext:       tlsContext,
+		LbSubsetConfig:   subsetConfig,
+		CircuitBreakers:  tbnToEnvoyCircuitBreakers(tbnCluster.CircuitBreakers),
+		OutlierDetection: tbnToEnvoyOutlierDetection(tbnCluster.OutlierDetection),
 	}
 }
 
@@ -148,18 +147,42 @@ func envoyToTbnCircuitBreakers(ecb *envoycluster.CircuitBreakers) *tbnapi.Circui
 	return nil
 }
 
-func intPtrToUint32Ptr(intPtr *int) *types.UInt32Value {
-	if intPtr == nil {
+func tbnToEnvoyOutlierDetection(tod *tbnapi.OutlierDetection) *envoycluster.OutlierDetection {
+	if tod == nil {
 		return nil
 	}
 
-	return &types.UInt32Value{Value: uint32(*intPtr)}
+	return &envoycluster.OutlierDetection{
+		Consecutive_5Xx:                    intPtrToUint32Ptr(tod.Consecutive5xx),
+		Interval:                           intPtrToDurationPtr(tod.IntervalMsec),
+		BaseEjectionTime:                   intPtrToDurationPtr(tod.BaseEjectionTimeMsec),
+		MaxEjectionPercent:                 intPtrToUint32Ptr(tod.MaxEjectionPercent),
+		EnforcingConsecutive_5Xx:           intPtrToUint32Ptr(tod.EnforcingConsecutive5xx),
+		EnforcingSuccessRate:               intPtrToUint32Ptr(tod.EnforcingSuccessRate),
+		SuccessRateMinimumHosts:            intPtrToUint32Ptr(tod.SuccessRateMinimumHosts),
+		SuccessRateRequestVolume:           intPtrToUint32Ptr(tod.SuccessRateRequestVolume),
+		SuccessRateStdevFactor:             intPtrToUint32Ptr(tod.SuccessRateStdevFactor),
+		ConsecutiveGatewayFailure:          intPtrToUint32Ptr(tod.ConsecutiveGatewayFailure),
+		EnforcingConsecutiveGatewayFailure: intPtrToUint32Ptr(tod.EnforcingConsecutiveGatewayFailure),
+	}
 }
 
-func uint32PtrToIntPtr(ui32 *types.UInt32Value) *int {
-	if ui32 == nil {
+func envoyToTbnOutlierDetection(eod *envoycluster.OutlierDetection) *tbnapi.OutlierDetection {
+	if eod == nil {
 		return nil
 	}
 
-	return ptr.Int(int(ui32.GetValue()))
+	return &tbnapi.OutlierDetection{
+		IntervalMsec:                       durationPtrToIntPtr(eod.GetInterval()),
+		BaseEjectionTimeMsec:               durationPtrToIntPtr(eod.GetBaseEjectionTime()),
+		MaxEjectionPercent:                 uint32PtrToIntPtr(eod.GetMaxEjectionPercent()),
+		Consecutive5xx:                     uint32PtrToIntPtr(eod.GetConsecutive_5Xx()),
+		EnforcingConsecutive5xx:            uint32PtrToIntPtr(eod.GetEnforcingConsecutive_5Xx()),
+		EnforcingSuccessRate:               uint32PtrToIntPtr(eod.GetEnforcingSuccessRate()),
+		SuccessRateMinimumHosts:            uint32PtrToIntPtr(eod.GetSuccessRateMinimumHosts()),
+		SuccessRateRequestVolume:           uint32PtrToIntPtr(eod.GetSuccessRateRequestVolume()),
+		SuccessRateStdevFactor:             uint32PtrToIntPtr(eod.GetSuccessRateStdevFactor()),
+		ConsecutiveGatewayFailure:          uint32PtrToIntPtr(eod.GetConsecutiveGatewayFailure()),
+		EnforcingConsecutiveGatewayFailure: uint32PtrToIntPtr(eod.GetEnforcingConsecutiveGatewayFailure()),
+	}
 }

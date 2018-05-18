@@ -23,7 +23,7 @@ import (
 
 // FixtureHash is the expected result calling TerribleHash() on the *Objects
 // produced by MkFixtureObjects()
-const FixtureHash = "3Yo1B44poP/tq8OeI8GKdw=="
+const FixtureHash = "Q1CjdgpPn0o+vJDxB7iBUg=="
 
 // MkFixtureObjects produces a *Objects that exercises most of the surface area
 // of the API, suitable for testing.
@@ -75,6 +75,13 @@ func MkFixtureObjects() *Objects {
 					},
 				},
 				CircuitBreakers: &api.CircuitBreakers{MaxRetries: ptr.Int(10)},
+				OutlierDetection: &api.OutlierDetection{
+					Consecutive5xx:                     ptr.Int(100),
+					IntervalMsec:                       ptr.Int(100),
+					EnforcingConsecutive5xx:            ptr.Int(100),
+					EnforcingConsecutiveGatewayFailure: ptr.Int(0),
+					EnforcingSuccessRate:               ptr.Int(0),
+				},
 			},
 			{
 				ClusterKey: "C3",
@@ -114,6 +121,12 @@ func MkFixtureObjects() *Objects {
 				CircuitBreakers: &api.CircuitBreakers{
 					MaxConnections: ptr.Int(2048),
 					MaxRequests:    ptr.Int(2048),
+				},
+				OutlierDetection: &api.OutlierDetection{
+					IntervalMsec:                       ptr.Int(30000),
+					EnforcingConsecutive5xx:            ptr.Int(0),
+					EnforcingConsecutiveGatewayFailure: ptr.Int(0),
+					EnforcingSuccessRate:               ptr.Int(100),
 				},
 			},
 		},

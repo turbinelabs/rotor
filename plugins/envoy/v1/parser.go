@@ -38,11 +38,12 @@ type clusterManager struct {
 }
 
 type cluster struct {
-	Name            string           `json:"name"`
-	Type            string           `json:"type"`
-	ServiceName     string           `json:"service_name"`
-	Hosts           []host           `json:"hosts"`
-	CircuitBreakers *circuitBreakers `json:"circuit_breakers"`
+	Name             string            `json:"name"`
+	Type             string            `json:"type"`
+	ServiceName      string            `json:"service_name"`
+	Hosts            []host            `json:"hosts"`
+	CircuitBreakers  *circuitBreakers  `json:"circuit_breakers"`
+	OutlierDetection *outlierDetection `json:"outlier_detection"`
 }
 
 type host struct {
@@ -58,6 +59,20 @@ type perPriorityCircuitBreakers struct {
 	MaxPendingRequests *int `json:"max_pending_requests"`
 	MaxRequests        *int `json:"max_requests"`
 	MaxRetries         *int `json:"max_retries"`
+}
+
+type outlierDetection struct {
+	Consecutive5xx                     *int `json:"consecutive_5xx"`
+	ConsecutiveGatewayFailure          *int `json:"consecutive_gateway_failure"`
+	IntervalMsec                       *int `json:"interval_ms"`
+	BaseEjectionTimeMsec               *int `json:"base_ejection_time_ms"`
+	MaxEjectionPercent                 *int `json:"max_ejection_percent"`
+	EnforcingConsecutive5xx            *int `json:"enforcing_consecutive_5xx"`
+	EnforcingConsecutiveGatewayFailure *int `json:"enforcing_consecutive_gateway_failure"`
+	EnforcingSuccessRate               *int `json:"enforcing_success_rate"`
+	SuccessRateMinimumHosts            *int `json:"success_rate_minimum_hosts"`
+	SuccessRateRequestVolume           *int `json:"success_rate_request_volume"`
+	SuccessRateStdevFactor             *int `json:"success_rate_stdev_factor"`
 }
 
 type sds struct {
@@ -158,9 +173,10 @@ func (p *parser) parse(r io.Reader) ([]api.Cluster, error) {
 		}
 
 		cluster := api.Cluster{
-			Name:            c.Name,
-			Instances:       instances,
-			CircuitBreakers: mkCircuitBreakers(c.CircuitBreakers),
+			Name:             c.Name,
+			Instances:        instances,
+			CircuitBreakers:  mkCircuitBreakers(c.CircuitBreakers),
+			OutlierDetection: mkOutlierDetection(c.OutlierDetection),
 		}
 		clusters[cluster.Name] = cluster
 	}
@@ -204,5 +220,25 @@ func mkCircuitBreakers(v1Cbs *circuitBreakers) *api.CircuitBreakers {
 		MaxPendingRequests: v1Cbs.Default.MaxPendingRequests,
 		MaxRetries:         v1Cbs.Default.MaxRetries,
 		MaxRequests:        v1Cbs.Default.MaxRequests,
+	}
+}
+
+func mkOutlierDetection(od *outlierDetection) *api.OutlierDetection {
+	if od == nil {
+		return nil
+	}
+
+	return &api.OutlierDetection{
+		IntervalMsec:                       od.IntervalMsec,
+		BaseEjectionTimeMsec:               od.BaseEjectionTimeMsec,
+		MaxEjectionPercent:                 od.MaxEjectionPercent,
+		Consecutive5xx:                     od.Consecutive5xx,
+		EnforcingConsecutive5xx:            od.EnforcingConsecutive5xx,
+		EnforcingSuccessRate:               od.EnforcingSuccessRate,
+		SuccessRateMinimumHosts:            od.SuccessRateMinimumHosts,
+		SuccessRateRequestVolume:           od.SuccessRateRequestVolume,
+		SuccessRateStdevFactor:             od.SuccessRateStdevFactor,
+		ConsecutiveGatewayFailure:          od.ConsecutiveGatewayFailure,
+		EnforcingConsecutiveGatewayFailure: od.EnforcingConsecutiveGatewayFailure,
 	}
 }

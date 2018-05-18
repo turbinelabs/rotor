@@ -116,9 +116,16 @@ func TestManyClusters(t *testing.T) {
 				Thresholds: []*envoycluster.CircuitBreakers_Thresholds{
 					{
 						Priority:   envoycore.RoutingPriority_DEFAULT,
-						MaxRetries: &types.UInt32Value{Value: uint32(10)},
+						MaxRetries: &types.UInt32Value{Value: 10},
 					},
 				},
+			},
+			OutlierDetection: &envoycluster.OutlierDetection{
+				Consecutive_5Xx:                    &types.UInt32Value{Value: 100},
+				Interval:                           &types.Duration{Nanos: int32(100 * time.Millisecond)},
+				EnforcingConsecutive_5Xx:           &types.UInt32Value{Value: 100},
+				EnforcingConsecutiveGatewayFailure: &types.UInt32Value{Value: 0},
+				EnforcingSuccessRate:               &types.UInt32Value{Value: 0},
 			},
 		},
 		{
@@ -172,6 +179,12 @@ func TestManyClusters(t *testing.T) {
 						MaxRequests:    &types.UInt32Value{Value: uint32(2048)},
 					},
 				},
+			},
+			OutlierDetection: &envoycluster.OutlierDetection{
+				Interval:                           &types.Duration{Seconds: 30},
+				EnforcingConsecutive_5Xx:           &types.UInt32Value{Value: 0},
+				EnforcingConsecutiveGatewayFailure: &types.UInt32Value{Value: 0},
+				EnforcingSuccessRate:               &types.UInt32Value{Value: 100},
 			},
 		},
 	}

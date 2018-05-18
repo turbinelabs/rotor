@@ -176,10 +176,11 @@ func mkDynamicCluster(
 	}
 
 	return &api.Cluster{
-		Name:            dc.GetName(),
-		RequireTLS:      dc.GetTlsContext() != nil,
-		Instances:       is,
-		CircuitBreakers: envoyToTbnCircuitBreakers(dc.GetCircuitBreakers()),
+		Name:             dc.GetName(),
+		RequireTLS:       dc.GetTlsContext() != nil,
+		Instances:        is,
+		CircuitBreakers:  envoyToTbnCircuitBreakers(dc.GetCircuitBreakers()),
+		OutlierDetection: envoyToTbnOutlierDetection(dc.OutlierDetection),
 	}, errs
 }
 

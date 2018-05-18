@@ -22,6 +22,7 @@ package adapter
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"net/url"
 	"strings"
 	"time"
@@ -247,4 +248,51 @@ func valueString(s string) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_StringValue{StringValue: s},
 	}
+}
+
+func intPtrToUint32Ptr(intPtr *int) *types.UInt32Value {
+	if intPtr == nil {
+		return nil
+	}
+
+	return &types.UInt32Value{Value: uint32(*intPtr)}
+}
+
+func uint32PtrToIntPtr(ui32 *types.UInt32Value) *int {
+	if ui32 == nil {
+		return nil
+	}
+
+	return ptr.Int(int(ui32.GetValue()))
+}
+
+func intPtrToDurationPtr(intPtr *int) *types.Duration {
+	if intPtr == nil {
+		return nil
+	}
+
+	return &types.Duration{
+		Seconds: int64(*intPtr / 1000),
+		Nanos:   int32((*intPtr % 1000) * int(time.Millisecond)),
+	}
+}
+
+// durationPtrToIntPtr supports millisecond granularity, which has the following
+// implications:
+//   - a Duration greater than math.MaxInt32 milliseconds will return nil
+//   - Nanos will be truncated at the millisecond boundary
+func durationPtrToIntPtr(d *types.Duration) *int {
+	if d == nil {
+		return nil
+	}
+
+	secs := time.Duration(d.Seconds) * time.Second
+	nanos := time.Duration(d.Nanos)
+
+	final := (secs + nanos) / time.Millisecond
+	if final > math.MaxInt32 {
+		return nil
+	}
+
+	return ptr.Int(int(final))
 }

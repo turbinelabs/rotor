@@ -61,6 +61,13 @@ const (
             "max_requests": 3,
             "max_retries": 4
           }
+        },
+        "outlier_detection": {
+          "consecutive_5xx": 100,
+          "interval_ms": 100,
+          "enforcing_consecutive_5xx": 100,
+          "enforcing_consecutive_gateway_failure": 0,
+          "enforcing_success_rate": 0
         }
       },
       {
@@ -76,6 +83,12 @@ const (
             "max_pending_requests": 1,
             "max_retries": 4
           }
+        },
+        "outlier_detection": {
+          "interval_ms": 30000,
+          "enforcing_consecutive_5xx": 0,
+          "enforcing_consecutive_gateway_failure": 0,
+          "enforcing_success_rate": 100
         }
       }
     ]
@@ -128,6 +141,13 @@ const (
             "max_requests": 3,
             "max_retries": 4
           }
+        },
+        "outlier_detection": {
+          "consecutive_5xx": 100,
+          "interval_ms": 100,
+          "enforcing_consecutive_5xx": 100,
+          "enforcing_consecutive_gateway_failure": 0,
+          "enforcing_success_rate": 0
         }
       },
       {
@@ -143,6 +163,12 @@ const (
             "max_pending_requests": 1,
             "max_retries": 4
           }
+        },
+        "outlier_detection": {
+          "interval_ms": 30000,
+          "enforcing_consecutive_5xx": 0,
+          "enforcing_consecutive_gateway_failure": 0,
+          "enforcing_success_rate": 100
         }
       },
       {
@@ -205,6 +231,13 @@ const (
             "max_requests": 3,
             "max_retries": 4
           }
+        },
+        "outlier_detection": {
+          "consecutive_5xx": 100,
+          "interval_ms": 100,
+          "enforcing_consecutive_5xx": 100,
+          "enforcing_consecutive_gateway_failure": 0,
+          "enforcing_success_rate": 0
         }
       },
       {
@@ -220,6 +253,12 @@ const (
             "max_pending_requests": 1,
             "max_retries": 4
           }
+        },
+        "outlier_detection": {
+          "interval_ms": 30000,
+          "enforcing_consecutive_5xx": 0,
+          "enforcing_consecutive_gateway_failure": 0,
+          "enforcing_success_rate": 100
         }
       }
     ]
@@ -244,6 +283,12 @@ cluster_manager:
         max_pending_requests: 2
         max_requests: 3
         max_retries: 4
+    outlier_detection:
+      interval_ms: 100
+      consecutive_5xx: 100
+      enforcing_consecutive_5xx: 100
+      enforcing_consecutive_gateway_failure: 0
+      enforcing_success_rate: 0
   - name: lightstep_saas
     type: logical_dns
     hosts:
@@ -252,6 +297,11 @@ cluster_manager:
       default:
         max_pending_requests: 1
         max_retries: 4
+    outlier_detection:
+      interval_ms: 30000
+      enforcing_consecutive_5xx: 0
+      enforcing_consecutive_gateway_failure: 0
+      enforcing_success_rate: 100
 `
 
 	YamlInputDuplicateClusters = `
@@ -360,6 +410,13 @@ var (
 				MaxRequests:        ptr.Int(3),
 				MaxRetries:         ptr.Int(4),
 			},
+			OutlierDetection: &api.OutlierDetection{
+				Consecutive5xx:                     ptr.Int(100),
+				IntervalMsec:                       ptr.Int(100),
+				EnforcingConsecutive5xx:            ptr.Int(100),
+				EnforcingConsecutiveGatewayFailure: ptr.Int(0),
+				EnforcingSuccessRate:               ptr.Int(0),
+			},
 		},
 		{
 			Name: "lightstep_saas",
@@ -370,6 +427,12 @@ var (
 			CircuitBreakers: &api.CircuitBreakers{
 				MaxPendingRequests: ptr.Int(1),
 				MaxRetries:         ptr.Int(4),
+			},
+			OutlierDetection: &api.OutlierDetection{
+				IntervalMsec:                       ptr.Int(30000),
+				EnforcingConsecutive5xx:            ptr.Int(0),
+				EnforcingConsecutiveGatewayFailure: ptr.Int(0),
+				EnforcingSuccessRate:               ptr.Int(100),
 			},
 		},
 	}

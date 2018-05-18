@@ -19,6 +19,7 @@ package adapter
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	tbnapi "github.com/turbinelabs/api"
+	"github.com/turbinelabs/nonstdlib/ptr"
 	"github.com/turbinelabs/rotor/xds/poller"
 	"github.com/turbinelabs/test/assert"
 )
@@ -442,4 +444,86 @@ func TestValueString(t *testing.T) {
 	assert.Equal(t, s2.GetStringValue(), "a")
 	assert.Equal(t, s3.GetStringValue(), "b")
 	assert.NotSameInstance(t, s1, s2)
+}
+
+func TestIntPtrToUint32Ptr(t *testing.T) {
+	var a, b *types.UInt32Value
+	a = intPtrToUint32Ptr(nil)
+	assert.Equal(t, a, b)
+
+	a = intPtrToUint32Ptr(ptr.Int(1))
+	assert.NotDeepEqual(t, a, b)
+
+	b = &types.UInt32Value{Value: 1}
+	assert.DeepEqual(t, a, b)
+	assert.DeepEqual(t, a, a)
+
+	b = &types.UInt32Value{Value: 2}
+	assert.NotDeepEqual(t, a, b)
+}
+
+func TestUint32PtrToIntPtr(t *testing.T) {
+	var a, b *int
+	a = uint32PtrToIntPtr(nil)
+	assert.Equal(t, a, b)
+
+	a = uint32PtrToIntPtr(&types.UInt32Value{Value: 1})
+	assert.NotDeepEqual(t, a, b)
+
+	b = ptr.Int(1)
+	assert.DeepEqual(t, a, b)
+	assert.DeepEqual(t, a, a)
+
+	b = ptr.Int(2)
+	assert.NotDeepEqual(t, a, b)
+}
+
+func TestIntPtrToDurationPtr(t *testing.T) {
+	var a, b *types.Duration
+	a = intPtrToDurationPtr(nil)
+	assert.Equal(t, a, b)
+
+	a = intPtrToDurationPtr(ptr.Int(20000))
+	assert.NotDeepEqual(t, a, b)
+
+	b = &types.Duration{Seconds: 20}
+	assert.DeepEqual(t, a, b)
+
+	a = intPtrToDurationPtr(ptr.Int(200123))
+	b = &types.Duration{Seconds: 200, Nanos: 123000000}
+	assert.DeepEqual(t, a, b)
+
+	a = intPtrToDurationPtr(ptr.Int(0))
+	b = &types.Duration{Seconds: 0, Nanos: 0}
+	assert.DeepEqual(t, a, b)
+
+	a = intPtrToDurationPtr(ptr.Int(math.MaxInt32))
+	b = &types.Duration{Seconds: 2147483, Nanos: 647000000}
+	assert.DeepEqual(t, a, b)
+
+	a = intPtrToDurationPtr(ptr.Int(1))
+	assert.NotDeepEqual(t, a, b)
+}
+
+func TestDurationPtrToIntPtr(t *testing.T) {
+	var a, b *int
+	a = durationPtrToIntPtr(nil)
+	assert.DeepEqual(t, a, b)
+
+	a = durationPtrToIntPtr(&types.Duration{Seconds: math.MaxInt32 * 2})
+	assert.Equal(t, a, b)
+
+	a = durationPtrToIntPtr(&types.Duration{Seconds: 1})
+	assert.NotDeepEqual(t, a, b)
+
+	b = ptr.Int(1000)
+	assert.DeepEqual(t, a, b)
+
+	a = durationPtrToIntPtr(&types.Duration{Seconds: 5000, Nanos: 647123344})
+	b = ptr.Int(5000647)
+	assert.DeepEqual(t, a, b)
+
+	a = durationPtrToIntPtr(&types.Duration{Seconds: 5000, Nanos: 123344})
+	b = ptr.Int(5000000)
+	assert.DeepEqual(t, a, b)
 }
