@@ -134,7 +134,8 @@ $ docker run -d \
 turbinelabs/rotor:0.16.0-rc1
 ```
 
-To mark a `Service` for Rotor, add a tag called `tbn-cluster`.
+To mark a `Service` for Rotor, add a tag called `tbn-cluster`. See
+[examples/consul](examples/consul)for a working example.
 
 ### EC2
 
