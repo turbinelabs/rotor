@@ -37,7 +37,7 @@ spec:
     spec:
       serviceAccountName: rotor
       containers:
-      - image: turbinelabs/rotor:0.16.0-rc1
+      - image: turbinelabs/rotor:0.16.0
         imagePullPolicy: Always
         name: rotor
         ports:

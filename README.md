@@ -103,7 +103,7 @@ depends on your service discovery registry. To see the flags available for your
 SD, run:
 
 ```console
-docker run -e "ROTOR_CMD=<platform>" -e "ROTOR_HELP=true" turbinelabs/rotor:0.16.0-rc1
+docker run -e "ROTOR_CMD=<platform>" -e "ROTOR_HELP=true" turbinelabs/rotor:0.16.0
 ```
 
 where `<platform>` is one of: aws, ecs, consul, file, kubernetes, or marathon.
@@ -131,7 +131,7 @@ $ docker run -d \
   -e "ROTOR_CMD=consul" \
   -e "ROTOR_CONSUL_DC=<your datacenter>" \
   -e "ROTOR_CONSUL_HOSTPORT=<consul ip address>:8500" \
-turbinelabs/rotor:0.16.0-rc1
+turbinelabs/rotor:0.16.0
 ```
 
 To mark a `Service` for Rotor, add a tag called `tbn-cluster`. See
@@ -149,7 +149,7 @@ $ docker run -d \
 -e 'ROTOR_AWS_VPC_ID=<your vpc id>' \
 -e 'ROTOR_CMD=aws' \
 -p 50000:50000 \
-turbinelabs/rotor:0.16.0-rc1
+turbinelabs/rotor:0.16.0
 ```
 
 You need to tag instances with the service name and port it exposes by adding a tag of the format `tbn:cluster:<cluster-name>:<port-name>`. Instances that serve more than one port can be tagged multiple times. For example, to expose two services from a single instance on ports 8080 and 8081, you can tag the instance by running:
@@ -173,7 +173,7 @@ $ docker run -d \
 -e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
 -e 'ROTOR_CMD=ecs \
 -p 50000:50000 \
-turbinelabs/rotor:0.16.0-rc1
+turbinelabs/rotor:0.16.0
 ```
 
 You can run this inside or outside of ECS itself, as long as your Envoy instances have access to the container on port 50000.
@@ -200,7 +200,7 @@ Rotor runs as an app inside DC/OS. Save this as `rotor.json`:
   "container": {
     "type": "DOCKER",
     "docker": {
-      "image": "turbinelabs/rotor:0.16.0-rc1",
+      "image": "turbinelabs/rotor:0.16.0",
       "forcePullImage": true
     }
   },
@@ -230,7 +230,7 @@ Rotor can read from flat files that define clusters and instances.
 $ docker run -d \
 -e 'ROTOR_CMD=file \
 -p 50000:50000 \
-turbinelabs/rotor:0.16.0-rc1 /path/to/file/in/container
+turbinelabs/rotor:0.16.0 /path/to/file/in/container
 ```
 
 The format defines clusters and the associated instances:
@@ -258,7 +258,7 @@ $ docker run -d \
 -e 'ENVOY_XDS_PORT=50000' \
 -p 9999:9999 \
 -p 80:80 \
- turbinelabs/envoy-simple:0.16.0-rc1
+ turbinelabs/envoy-simple:0.16.0
 ```
 
 You may have to modify the host and port, depending on where you have Rotor deployed.
