@@ -1,0 +1,26 @@
+version: '2'
+services:
+  envoy-simple:
+    build:
+      context: .
+      dockerfile: Dockerfile-envoysimple
+    expose:
+      - "80"
+      - "9999"
+    ports:
+      - "80:80"
+      - "9999:9999"
+  consul:
+    build:
+      context: .
+      dockerfile: Dockerfile-consul
+    expose:
+      - "8500"
+    ports:
+      - "8500:8500"
+  rotor:
+    build:
+      context: .
+      dockerfile: Dockerfile-rotor
+    ports:
+      - "50000:50000"

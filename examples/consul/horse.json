@@ -1,0 +1,8 @@
+{
+  "Service": {
+    "address": "horse.turbinelabs.io",
+    "name": "horse.turbinelabs.io",
+    "tags": ["tbn-cluster"],
+    "port": 80
+  }
+}

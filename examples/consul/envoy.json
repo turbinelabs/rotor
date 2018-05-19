@@ -1,0 +1,8 @@
+{
+  "Service": {
+    "name": "envoy-simple",
+    "address": "127.0.0.1",
+    "tags": ["tbn-cluster"],
+    "port": 80
+  }
+}
