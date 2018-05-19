@@ -36,7 +36,7 @@ dogstatsd, and Wavefront.
 Rotor is a great starting point for quickly integrating Envoy with your
 existing environment. It provides a simple service mesh for many applications
 out of the box. If you have a more complex application, you can modify it to
-your needs or [add an API key](#apikey) to unlock traffic management with
+your needs or [add an API key](#api-key) to unlock traffic management with
 [Houston](https://turbinelabs.io).
 
 ## Features
@@ -48,7 +48,7 @@ Rotor connects two types of information:
 - **Envoy Configuration** is served over Envoy’s discovery services: EDS, CDS,
   RDS, and LDS.
 - (optionally) **Configuration via UI and API** is provided by the
-  [Turbine Labs](turbinelabs.io) API, with an [API key](#apikey).
+  [Turbine Labs](turbinelabs.io) API, with an [API key](#api-key).
 
 Without an API key (“standalone mode”), Rotor will serve Envoy
 configuration as follows:
@@ -70,16 +70,16 @@ configuration as follows:
 With an API key, Rotor acts as the management bastion for
 [Houston](https://turbinelabs.io). It provides a highly customizable control
 plane for Envoy, including full control over domains, routes, and cluster
-behavior. For more information, see the section below on [adding an API
-key](#apikey).
+behavior. For more information, see the section below on
+[adding an API key](#api-key).
 
 ## Installation
 
 The simplest way to start using Rotor is to use the docker image. You’ll
 need to configure it to point to your service discovery, then configure Envoy to
 read xDS configuration from Rotor. How you setup Envoy will depend on your
-environment, though you can see a simple example [in the section on Envoy
-configuration](#envoy).
+environment, though you can see a simple example
+[in the section on Envoy configuration](#envoy).
 
 Rotor supports the following service discovery integrations:
 
@@ -269,7 +269,7 @@ your Envoy. With a Houston API key, Rotor is capable of serving many different
 Envoy configurations, depending on which Envoy is asking. In standalone mode,
 all Envoys are assumed to be part of the same Zone and Cluster, so you must make
 sure these values are passed to Rotor.  `envoy-simple` passes `default-cluster`
-and `default-zone` by default. To serve multiple configs, either run multiple Rotors, fork Rotor and add your own config, or see [Using with Houston](#apikey).
+and `default-zone` by default. To serve multiple configs, either run multiple Rotors, fork Rotor and add your own config, or see [Using with Houston](#api-key).
 
 You can verify that Rotor and Envoy are working correctly together by curling the admin interface to Envoy to see the routes that have been set up:
 
@@ -340,7 +340,6 @@ Patches accepted! In particular we'd love to support other mechanisms of
 service discovery. Please see
 [Contributing to Turbine Labs Open Source Projects](http://github.com/turbinelabs/developer/blob/master/README.md#contributing).
 
-<a name=”apikey”></a>
 ## API Key
 
 Rotor is also a part of a paid subscription to [Houston](https://turbinelabs.io). By adding an API key to Rotor, you unlock traffic management for your whole team, including:
