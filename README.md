@@ -350,7 +350,7 @@ Rotor is also a part of a paid subscription to [Houston](https://turbinelabs.io)
 
 Specifically, instead of the static routes described in [Features](#features), an API key allows more flexible configuration of routes, domains, listeners, and clusters through Houston. You can also run multiple Rotor processes to bridge, e.g. EC2 and Kubernetes, allowing you configure routes that incrementally migrate traffic from one to the other. Houston also collects all the additional metadata on your instances, allowing you to route traffic based on custom tags and labels.
 
-If you already have an API key, see the [Turbine Labs docs]](http://docs.turbinelabs.io/) for how to get started.
+If you already have an API key, see the [Turbine Labs docs](http://docs.turbinelabs.io/) for how to get started.
 
 ## Code of Conduct
 
