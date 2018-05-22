@@ -103,7 +103,7 @@ depends on your service discovery registry. To see the flags available for your
 SD, run:
 
 ```console
-docker run -e "ROTOR_CMD=<platform>" -e "ROTOR_HELP=true" turbinelabs/rotor:0.16.0
+$ docker run turbinelabs/rotor:0.16.0 rotor <platform> --help
 ```
 
 where `<platform>` is one of: aws, ecs, consul, file, kubernetes, or marathon.
