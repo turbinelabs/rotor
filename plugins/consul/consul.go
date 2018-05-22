@@ -29,6 +29,7 @@ import (
 	tbnflag "github.com/turbinelabs/nonstdlib/flag"
 	"github.com/turbinelabs/nonstdlib/flag/usage"
 	"github.com/turbinelabs/nonstdlib/log/console"
+	"github.com/turbinelabs/nonstdlib/strings"
 	"github.com/turbinelabs/rotor"
 	"github.com/turbinelabs/rotor/updater"
 )
@@ -83,11 +84,32 @@ const (
 Clusters stored in the Turbine Labs API at startup and periodically thereafter.
 
 A service is marked for import using tags, by default "` + defaultClusterTag + `"
-is used but it may be customized through the command line (see -cluster-tag).
+is used but it may be customized through the command line (see --cluster-tag).
 Each identified service will be imported as a Turbine Cluster and the nodes
 that are marked with the configured tag are added as instances for that
-Cluster.  Additional tags on a node are added as instance metadata, the service
-tag itself is not included.
+Cluster. For each instance within a Cluster, metadata is populated from a
+combination of service tags, node metadata, service metadata and health checks.
+
+{{bold "Service Tags"}}
+
+Service tags, excluding the cluster tag itself, are added with a "tag:" prefix.
+By default, they are treated as single value entries and are imported with empty
+values. The --tag-delimiter flag can be used to treat tags as key value pairs,
+and they will be parsed as such. Tags that have the delimiter as a suffix
+or that do not contain it at all are added with empty values, while tags that
+use it as a prefix are ignored and logged.
+
+{{bold "Node Metadata"}}
+
+Node metadata is added as instance metadata with a "node:" prefix for each
+key.
+
+{{bold "Service Metadata"}}
+
+Service metadata is passed through and is added as instance metadata without
+any namespacing.
+
+{{bold "Health Checks"}}
 
 Node health checks will be added as instance metadata named following the pattern
 "check:<check-id>" with the check status as value. Additionally "node-health" is
@@ -132,6 +154,7 @@ type consulUpdateFn func(updater.Updater, consulClient, string, string)
 type consulRunner struct {
 	consulSettings
 
+	tagDelimiter string
 	updaterFlags rotor.UpdaterFromFlags
 }
 
@@ -162,6 +185,12 @@ func Cmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 		"cluster-tag",
 		defaultClusterTag,
 		"The tag used to indicate that a service should be imported as a Cluster.")
+
+	flags.StringVar(
+		&runner.tagDelimiter,
+		"tag-delimiter",
+		"",
+		"The delimiter used to split key/value pairs stored in Consul service tags.")
 
 	endpoint := consulEndpointConfig{}
 
@@ -214,6 +243,13 @@ func (cr *consulRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.Errorf("Datacenter %s was not found", cr.consulDC)
 	}
 
+	var parseTag tagParser
+	if cr.tagDelimiter == "" {
+		parseTag = passThroughTagParser
+	} else {
+		parseTag = delimiterTagParser(cr.tagDelimiter)
+	}
+
 	updater.Loop(
 		u,
 		func() ([]api.Cluster, error) {
@@ -224,7 +260,7 @@ func (cr *consulRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 				getConsulServices,
 				getConsulServiceDetail,
 				getConsulNodeHealth,
-				mkClusters,
+				getMkClusterFn(parseTag),
 			)
 		},
 	)
@@ -301,74 +337,110 @@ func consulGetClusters(
 // health information from Consul into a collection of Turbine Clusters.
 type mkClusterFn func(string, map[string]consulServiceDetail, map[string]nodeHealth) api.Clusters
 
-func mkClusters(
-	svcTag string,
-	svcDetails map[string]consulServiceDetail,
-	nodeHealth map[string]nodeHealth,
-) api.Clusters {
-	result := []api.Cluster{}
+// tagParser provides a mechanism for parsing service tags into instance
+// metadata
+type tagParser func(string) (string, string, error)
 
-	for svc, detail := range svcDetails {
-		c := api.Cluster{Name: svc}
+func passThroughTagParser(t string) (string, string, error) {
+	return "tag:" + t, "", nil
+}
 
-		for _, node := range detail.nodes {
-			// core instance data
-			inst := api.Instance{
-				Host: node.address,
-				Port: node.port,
-			}
-
-			// add metadata
-			metadata := map[string]string{
-				"node-id": node.id,
-			}
-
-			for _, t := range node.tags {
-				if t == svcTag {
-					continue
-				}
-				metadata["tag:"+t] = ""
-			}
-
-			for k, v := range node.meta {
-				metadata[k] = v
-			}
-
-			health := nodeHealth[node.id]
-			allChecks := 0
-			healthyChecks := 0
-			for _, chk := range health {
-				if chk.ServiceID != "" && chk.ServiceID != svc {
-					continue
-				}
-				checkName := "check:" + chk.CheckID
-				metadata[checkName] = chk.Status
-				allChecks++
-				if chk.Status == consulapi.HealthPassing {
-					healthyChecks++
-				}
-			}
-
-			if allChecks == healthyChecks {
-				metadata["node-health"] = consulapi.HealthPassing
-			}
-			if healthyChecks > 0 && healthyChecks < allChecks {
-				metadata["node-health"] = "mixed"
-			}
-			if healthyChecks == 0 && allChecks > 0 {
-				metadata["node-health"] = "failed"
-			}
-
-			inst.Metadata = api.MetadataFromMap(metadata)
-
-			// append new instance
-			c.Instances = append(c.Instances, inst)
+func delimiterTagParser(delim string) tagParser {
+	return func(t string) (string, string, error) {
+		k, v := strings.Split2(t, delim)
+		if k == "" {
+			return "", "", fmt.Errorf("Invalid delimiter position for tag \"%s\"", t)
 		}
 
-		result = append(result, c)
+		return "tag:" + k, v, nil
 	}
+}
 
-	return result
+func getMkClusterFn(parseTag tagParser) mkClusterFn {
+	return func(
+		svcTag string,
+		svcDetails map[string]consulServiceDetail,
+		nodeHealth map[string]nodeHealth,
+	) api.Clusters {
+		result := []api.Cluster{}
+
+		for svc, detail := range svcDetails {
+			c := api.Cluster{Name: svc}
+
+			for _, node := range detail.nodes {
+				// core instance data
+				inst := api.Instance{
+					Host: node.address,
+					Port: node.port,
+				}
+
+				// add metadata
+				metadata := map[string]string{
+					"node-id": node.id,
+				}
+
+				for _, t := range node.tags {
+					if t == svcTag {
+						continue
+					}
+
+					k, v, err := parseTag(t)
+					if err != nil {
+						console.Error().Printf(
+							"Unable to parse tag for Service %s: %s",
+							svc,
+							err,
+						)
+						continue
+					}
+
+					metadata[k] = v
+				}
+
+				for k, v := range node.nodeMeta {
+					metadata["node:"+k] = v
+				}
+
+				for k, v := range node.serviceMeta {
+					metadata[k] = v
+				}
+
+				health := nodeHealth[node.id]
+				allChecks := 0
+				healthyChecks := 0
+				for _, chk := range health {
+					if chk.ServiceID != "" && chk.ServiceID != svc {
+						continue
+					}
+					checkName := "check:" + chk.CheckID
+					metadata[checkName] = chk.Status
+					allChecks++
+					if chk.Status == consulapi.HealthPassing {
+						healthyChecks++
+					}
+				}
+
+				if allChecks == healthyChecks {
+					metadata["node-health"] = consulapi.HealthPassing
+				}
+				if healthyChecks > 0 && healthyChecks < allChecks {
+					metadata["node-health"] = "mixed"
+				}
+				if healthyChecks == 0 && allChecks > 0 {
+					metadata["node-health"] = "failed"
+				}
+
+				inst.Metadata = api.MetadataFromMap(metadata)
+
+				// append new instance
+				c.Instances = append(c.Instances, inst)
+			}
+
+			result = append(result, c)
+		}
+
+		return result
+	}
 }
 
 func getConsulDatacenters(client catalogInterface) ([]string, error) {
@@ -410,11 +482,12 @@ func getConsulServices(client catalogInterface, dc string) (serviceListing, erro
 }
 
 type consulServiceNode struct {
-	id      string
-	address string
-	port    int
-	tags    []string
-	meta    map[string]string
+	id          string
+	address     string
+	port        int
+	tags        []string
+	nodeMeta    map[string]string
+	serviceMeta map[string]string
 }
 
 func (n consulServiceNode) HasTag(t string) bool {
@@ -439,7 +512,8 @@ func serviceDetailFromSvcs(name string, svcs []*consulapi.CatalogService) consul
 		} else {
 			n.address = s.Address
 		}
-		n.meta = s.NodeMeta
+		n.nodeMeta = s.NodeMeta
+		n.serviceMeta = s.ServiceMeta
 		n.port = s.ServicePort
 
 		result.nodes = append(result.nodes, n)

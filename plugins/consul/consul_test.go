@@ -242,20 +242,74 @@ func (tc testConsulGetClustersCase) run(t *testing.T) {
 		"svca": {
 			"svca",
 			[]consulServiceNode{
-				{"n1", "ip1", 1, tags{svctag}, md{"d": "e", "f": "g"}},
-				{"n2", "ip2", 1, tags{svctag}, md{"h": "i", "j": "k"}},
-				{"n3", "ip3", 1, tags{"c"}, md{"l": "m", "n": "o"}},
-				{"n4", "ip4", 1, tags{"a", "b"}, md{"p": "q", "r": "s"}},
+				{
+					id:       "n1",
+					address:  "ip1",
+					port:     1,
+					tags:     tags{svctag},
+					nodeMeta: md{"d": "e", "f": "g"},
+				},
+				{
+					id:       "n2",
+					address:  "ip2",
+					port:     1,
+					tags:     tags{svctag},
+					nodeMeta: md{"h": "i", "j": "k"},
+				},
+				{
+					id:       "n3",
+					address:  "ip3",
+					port:     1,
+					tags:     tags{"c"},
+					nodeMeta: md{"l": "m", "n": "o"},
+				},
+				{
+					id:       "n4",
+					address:  "ip4",
+					port:     1,
+					tags:     tags{"a", "b"},
+					nodeMeta: md{"p": "q", "r": "s"},
+				},
 			},
 		},
 		"svcc": {
 			"svcc",
 			[]consulServiceNode{
-				{"n1", "ip1", 10, tags{svctag}, md{"d": "e", "f": "g"}},
-				{"n2", "ip2", 10, tags{"c"}, md{"h": "i", "j": "k"}},
-				{"n3", "ip3", 10, tags{"c"}, md{"l": "m", "n": "o"}},
-				{"n4", "ip4", 10, tags{"a", "b"}, md{"p": "q", "r": "s"}},
-				{"n5", "ip5", 10, tags{svctag}, md{"t": "u", "v": "w"}},
+				{
+					id:       "n1",
+					address:  "ip1",
+					port:     10,
+					tags:     tags{svctag},
+					nodeMeta: md{"d": "e", "f": "g"},
+				},
+				{
+					id:       "n2",
+					address:  "ip2",
+					port:     10,
+					tags:     tags{"c"},
+					nodeMeta: md{"h": "i", "j": "k"},
+				},
+				{
+					id:       "n3",
+					address:  "ip3",
+					port:     10,
+					tags:     tags{"c"},
+					nodeMeta: md{"l": "m", "n": "o"},
+				},
+				{
+					id:       "n4",
+					address:  "ip4",
+					port:     10,
+					tags:     tags{"a", "b"},
+					nodeMeta: md{"p": "q", "r": "s"},
+				},
+				{
+					id:       "n5",
+					address:  "ip5",
+					port:     10,
+					tags:     tags{svctag},
+					nodeMeta: md{"t": "u", "v": "w"},
+				},
 			},
 		},
 	}
@@ -352,7 +406,7 @@ func TestConsulUpdate(t *testing.T) {
 	testConsulGetClustersCase{}.run(t)
 }
 
-func TestMkClusters(t *testing.T) {
+func testMkClustersWithDelimeter(t *testing.T, delim string) {
 	type md map[string]string
 	type tags []string
 
@@ -366,14 +420,49 @@ func TestMkClusters(t *testing.T) {
 			"svc-a": {
 				"svc-a",
 				[]consulServiceNode{
-					{"n2", "ip2", 1, []string{"a-n2-t1", tag, "a-n2-t2"}, md{"a": "b", "c": "d"}},
-					{"n3", "ip3", 1, tags{"a-n3-t1", "a-n3-t2", tag}, md{"d": "e", "f": "g"}},
+					{
+						id:      "n2",
+						address: "ip2",
+						port:    1,
+						tags: tags{
+							fmt.Sprintf("an2t1%sv1", delim),
+							fmt.Sprintf("an2t2%sv2", delim),
+							fmt.Sprintf("an2t2v1%s", delim),
+							tag,
+						},
+						nodeMeta:    md{"a": "b", "c": "d"},
+						serviceMeta: md{"h": "i", "j": "k"},
+					},
+					{
+						id:      "n3",
+						address: "ip3",
+						port:    1,
+						tags: tags{
+							fmt.Sprintf("an3t1%sv1", delim),
+							fmt.Sprintf("an3t2%sv2", delim),
+							fmt.Sprintf("%san3t2v1", delim),
+							tag,
+						},
+						nodeMeta:    md{"d": "e", "f": "g"},
+						serviceMeta: md{"p": "q", "r": "s"},
+					},
 				},
 			},
 			"svc-b": {
 				"svc-b",
 				[]consulServiceNode{
-					{"n3", "ip3", 3, tags{"b-n3-t1", "b-n3-t2", tag}, md{"l": "m", "n": "o"}},
+					{
+						id:      "n3",
+						address: "ip3",
+						port:    3,
+						tags: tags{
+							fmt.Sprintf("bn3t1%s", delim),
+							fmt.Sprintf("bn3t2%s", delim),
+							tag,
+						},
+						nodeMeta:    md{"l": "m", "n": "o"},
+						serviceMeta: md{"t": "u", "v": "w"},
+					},
 				},
 			},
 			"svc-c": {
@@ -400,40 +489,64 @@ func TestMkClusters(t *testing.T) {
 			{
 				Name: "svc-a",
 				Instances: api.Instances{
-					{"ip2", 1, api.MetadataFromMap(md{
-						"node-id":     "n2",
-						"tag:a-n2-t1": "",
-						"tag:a-n2-t2": "",
-						"a":           "b",
-						"c":           "d",
-						"node-health": pass,
-					})},
-					{"ip3", 1, api.MetadataFromMap(md{
-						"node-id":     "n3",
-						"tag:a-n3-t1": "",
-						"tag:a-n3-t2": "",
-						"d":           "e",
-						"f":           "g",
-						"node-health": pass,
-						"check:n3-c1": pass,
-						"check:n3-c3": pass,
-					})},
+					{
+						Host: "ip2",
+						Port: 1,
+						Metadata: api.MetadataFromMap(
+							md{
+								"node-id":     "n2",
+								"tag:an2t1":   "v1",
+								"tag:an2t2":   "v2",
+								"tag:an2t2v1": "",
+								"node:a":      "b",
+								"node:c":      "d",
+								"h":           "i",
+								"j":           "k",
+								"node-health": pass,
+							},
+						),
+					},
+					{
+						Host: "ip3",
+						Port: 1,
+						Metadata: api.MetadataFromMap(
+							md{
+								"node-id":     "n3",
+								"tag:an3t1":   "v1",
+								"tag:an3t2":   "v2",
+								"node:d":      "e",
+								"node:f":      "g",
+								"node-health": pass,
+								"check:n3-c1": pass,
+								"check:n3-c3": pass,
+								"p":           "q",
+								"r":           "s",
+							},
+						),
+					},
 				},
 			},
-
 			{
 				Name: "svc-b",
 				Instances: api.Instances{
-					{"ip3", 3, api.MetadataFromMap(md{
-						"node-id":     "n3",
-						"tag:b-n3-t1": "",
-						"tag:b-n3-t2": "",
-						"l":           "m",
-						"n":           "o",
-						"check:n3-c2": "whee",
-						"check:n3-c3": pass,
-						"node-health": "mixed",
-					})},
+					{
+						Host: "ip3",
+						Port: 3,
+						Metadata: api.MetadataFromMap(
+							md{
+								"node-id":     "n3",
+								"tag:bn3t1":   "",
+								"tag:bn3t2":   "",
+								"node:l":      "m",
+								"node:n":      "o",
+								"check:n3-c2": "whee",
+								"check:n3-c3": pass,
+								"node-health": "mixed",
+								"t":           "u",
+								"v":           "w",
+							},
+						),
+					},
 				},
 			},
 
@@ -441,7 +554,7 @@ func TestMkClusters(t *testing.T) {
 		}
 	)
 
-	got := mkClusters(tag, details, health)
+	got := getMkClusterFn(delimiterTagParser(delim))(tag, details, health)
 	assert.Equal(t, len(got), 3)
 
 	gotm := got.GroupBy(func(c api.Cluster) string { return c.Name })
@@ -452,6 +565,57 @@ func TestMkClusters(t *testing.T) {
 			fmt.Printf("want: %#v\n", c)
 		}
 	}
+}
+
+func TestMkClustersWithColonDelimiter(t *testing.T) {
+	testMkClustersWithDelimeter(t, ":")
+}
+
+func TestMkClustersWithPipeDelimiter(t *testing.T) {
+	testMkClustersWithDelimeter(t, "|")
+}
+
+func TestPassThroughTagParser(t *testing.T) {
+	a, b, e := passThroughTagParser("a")
+	assert.Nil(t, e)
+	assert.Equal(t, a, "tag:a")
+	assert.Equal(t, b, "")
+
+	a, b, e = passThroughTagParser("")
+	assert.Nil(t, e)
+	assert.Equal(t, a, "tag:")
+	assert.Equal(t, b, "")
+}
+
+func TestDelimiterTagParser(t *testing.T) {
+	p := delimiterTagParser(":")
+
+	a, b, e := p("")
+	assert.NonNil(t, e)
+	assert.ErrorContains(t, e, "Invalid delimiter position")
+	assert.Equal(t, a, "")
+	assert.Equal(t, b, "")
+
+	a, b, e = p("ab:")
+	assert.Nil(t, e)
+	assert.Equal(t, a, "tag:ab")
+	assert.Equal(t, b, "")
+
+	a, b, e = p("a:b")
+	assert.Nil(t, e)
+	assert.Equal(t, a, "tag:a")
+	assert.Equal(t, b, "b")
+
+	a, b, e = p(":ab")
+	assert.NonNil(t, e)
+	assert.ErrorContains(t, e, "Invalid delimiter position")
+	assert.Equal(t, a, "")
+	assert.Equal(t, b, "")
+
+	a, b, e = p("ab")
+	assert.Nil(t, e)
+	assert.Equal(t, a, "tag:ab")
+	assert.Equal(t, b, "")
 }
 
 func TestGetConsulDatacentersError(t *testing.T) {
@@ -574,8 +738,20 @@ func TestServiceDetailFromSvcs(t *testing.T) {
 	want := consulServiceDetail{
 		svcid,
 		[]consulServiceNode{
-			{"n1", "addr1", 1234, tags1, meta1},
-			{"n2", "addr2", 1234, tags2, meta2},
+			{
+				id:       "n1",
+				address:  "addr1",
+				port:     1234,
+				tags:     tags1,
+				nodeMeta: meta1,
+			},
+			{
+				id:       "n2",
+				address:  "addr2",
+				port:     1234,
+				tags:     tags2,
+				nodeMeta: meta2,
+			},
 		},
 	}
 
