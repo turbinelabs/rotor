@@ -18,7 +18,9 @@ package adapter
 
 import (
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoyauth "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
@@ -27,6 +29,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/turbinelabs/api"
+	"github.com/turbinelabs/nonstdlib/ptr"
 	"github.com/turbinelabs/rotor/xds/collector"
 	"github.com/turbinelabs/test/assert"
 )
@@ -194,7 +197,7 @@ func TestMkStaticClusterNoName(t *testing.T) {
 	assert.ErrorContains(t, errs[0], "Empty cluster name returned")
 }
 
-func TestMkStaticClusterNoHostsNoTlsContextNoCircuitBreakers(t *testing.T) {
+func TestMkStaticClusterNoHostsNoTlsContextNoSubStructs(t *testing.T) {
 	i := &envoyapi.Cluster{Name: "c1"}
 	o, errs := mkStaticCluster(i)
 	assert.Equal(t, len(errs), 0)
@@ -203,7 +206,7 @@ func TestMkStaticClusterNoHostsNoTlsContextNoCircuitBreakers(t *testing.T) {
 	assert.Equal(t, len(o.Instances), 0)
 }
 
-func TestMkStaticClustersNoHostsTlsContextNoCircuitBreakers(t *testing.T) {
+func TestMkStaticClustersNoHostsTlsContextNoSubStructs(t *testing.T) {
 	i := &envoyapi.Cluster{
 		Name:       "c1",
 		TlsContext: &envoyauth.UpstreamTlsContext{},
@@ -229,15 +232,21 @@ func TestMkStaticClustersNoHostsTlsContextWithCircuitBreakers(t *testing.T) {
 		},
 	}
 
+	e := api.Cluster{
+		Name:            "c1",
+		RequireTLS:      true,
+		CircuitBreakers: &api.CircuitBreakers{MaxRetries: ptr.Int(10)},
+	}
+
 	o, errs := mkStaticCluster(i)
 	assert.Equal(t, len(errs), 0)
-	assert.Equal(t, o.Name, i.GetName())
-	assert.True(t, o.RequireTLS)
-	assert.Equal(t, len(o.Instances), 0)
-	assert.Equal(t, *o.CircuitBreakers.MaxRetries, 10)
+	if !assert.True(t, e.Equals(*o)) {
+		fmt.Printf("got:  %#v\n", *o)
+		fmt.Printf("want: %#v\n", e)
+	}
 }
 
-func TestMkStaticClustersWithHostsAndCircuitBreakers(t *testing.T) {
+func TestMkStaticClustersWithHostsAndSubstructs(t *testing.T) {
 	i := &envoyapi.Cluster{
 		Name:       "c1",
 		Type:       envoyapi.Cluster_STATIC,
@@ -277,24 +286,49 @@ func TestMkStaticClustersWithHostsAndCircuitBreakers(t *testing.T) {
 				},
 			},
 		},
+		OutlierDetection: &envoycluster.OutlierDetection{
+			Consecutive_5Xx:                    &types.UInt32Value{Value: 100},
+			Interval:                           &types.Duration{Nanos: int32(100 * time.Millisecond)},
+			EnforcingConsecutive_5Xx:           &types.UInt32Value{Value: 100},
+			EnforcingConsecutiveGatewayFailure: &types.UInt32Value{Value: 0},
+			EnforcingSuccessRate:               &types.UInt32Value{Value: 0},
+		},
+	}
+
+	e := api.Cluster{
+		Name:       "c1",
+		RequireTLS: true,
+		Instances: api.Instances{
+			{
+				Host: "1.2.3.4",
+				Port: 1234,
+			},
+			{
+				Host: "1.2.3.5",
+				Port: 1235,
+			},
+		},
+		CircuitBreakers: &api.CircuitBreakers{
+			MaxConnections:     ptr.Int(10),
+			MaxRetries:         ptr.Int(20),
+			MaxPendingRequests: ptr.Int(30),
+			MaxRequests:        ptr.Int(40),
+		},
+		OutlierDetection: &api.OutlierDetection{
+			Consecutive5xx:                     ptr.Int(100),
+			IntervalMsec:                       ptr.Int(100),
+			EnforcingConsecutive5xx:            ptr.Int(100),
+			EnforcingConsecutiveGatewayFailure: ptr.Int(0),
+			EnforcingSuccessRate:               ptr.Int(0),
+		},
 	}
 
 	o, errs := mkStaticCluster(i)
 	assert.Equal(t, len(errs), 0)
-	assert.Equal(t, o.Name, i.GetName())
-	assert.True(t, o.RequireTLS)
-	assert.Equal(t, len(o.Instances), len(i.Hosts))
-	for idx := range i.Hosts {
-		actual := o.Instances[idx]
-		expected := i.GetHosts()[idx]
-		assert.Equal(t, actual.Host, expected.GetSocketAddress().GetAddress())
-		assert.Equal(t, actual.Port, int(expected.GetSocketAddress().GetPortValue()))
+	if !assert.True(t, e.Equals(*o)) {
+		fmt.Printf("got:  %#v\n", *o)
+		fmt.Printf("want: %#v\n", e)
 	}
-
-	assert.Equal(t, *o.CircuitBreakers.MaxConnections, 10)
-	assert.Equal(t, *o.CircuitBreakers.MaxRetries, 20)
-	assert.Equal(t, *o.CircuitBreakers.MaxPendingRequests, 30)
-	assert.Equal(t, *o.CircuitBreakers.MaxRequests, 40)
 }
 
 func TestMkStaticClustersBadHostsGetSkipped(t *testing.T) {

@@ -135,10 +135,11 @@ func mkStaticCluster(sc *envoyapi.Cluster) (*api.Cluster, []error) {
 	is, errs := envoyAddrsToTbnInstances(sc.GetHosts())
 
 	return &api.Cluster{
-		Name:            sc.GetName(),
-		RequireTLS:      sc.GetTlsContext() != nil,
-		Instances:       is,
-		CircuitBreakers: envoyToTbnCircuitBreakers(sc.GetCircuitBreakers()),
+		Name:             sc.GetName(),
+		RequireTLS:       sc.GetTlsContext() != nil,
+		Instances:        is,
+		CircuitBreakers:  envoyToTbnCircuitBreakers(sc.GetCircuitBreakers()),
+		OutlierDetection: envoyToTbnOutlierDetection(sc.GetOutlierDetection()),
 	}, errs
 }
 
