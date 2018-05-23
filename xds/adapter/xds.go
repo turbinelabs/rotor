@@ -100,13 +100,16 @@ func NewXDS(
 
 	ldsConfig := listenerAdapterConfig{loggingCluster: xdsClusterName}
 	snapshotCache := newSnapshotCache()
-	consumer := newCachingConsumer(
-		snapshotCache,
-		registrar,
-		ldsConfig,
-		caFile,
-		defaultTimeout,
-		resolveDNS,
+	consumer := newCachingConsumerStats(
+		newCachingConsumer(
+			snapshotCache,
+			registrar,
+			ldsConfig,
+			caFile,
+			defaultTimeout,
+			resolveDNS,
+		),
+		stats,
 	)
 
 	alsReporterConfig := alsReporterConfig{}

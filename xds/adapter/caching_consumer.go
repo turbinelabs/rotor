@@ -39,7 +39,7 @@ type cachingConsumer interface {
 	server.Callbacks
 }
 
-// resourceAdapter produces a new cachingConsumer
+// newCachingConsumer produces a new cachingConsumer
 func newCachingConsumer(
 	cache snapshotCache,
 	registrar poller.Registrar,
@@ -134,7 +134,11 @@ func (c registeringCachingConsumer) OnFetchRequest(req *v2.DiscoveryRequest) {
 	ifFirst := func(svc service.All, proxy api.Proxy) {
 		console.Debug().Println("First registration of", pRef.MapKey())
 		if objs, err := c.getObjects(svc, proxy); err != nil {
-			console.Error().Printf("Error getting initial objects for node(%s): %s", pRef.MapKey(), err)
+			console.Error().Printf(
+				"Error getting initial objects for node(%s): %s",
+				pRef.MapKey(),
+				err,
+			)
 		} else if err := c.Consume(objs); err != nil {
 			console.Error().Printf("Error consuming objects for node(%s): %s", pRef.MapKey(), err)
 		}
@@ -146,7 +150,10 @@ func (c registeringCachingConsumer) OnFetchRequest(req *v2.DiscoveryRequest) {
 
 // OnFetchResponse implements
 // go-control-plane/pkg/server/Callbacks.OnFetchResponse
-func (c registeringCachingConsumer) OnFetchResponse(req *v2.DiscoveryRequest, resp *v2.DiscoveryResponse) {
+func (c registeringCachingConsumer) OnFetchResponse(
+	req *v2.DiscoveryRequest,
+	resp *v2.DiscoveryResponse,
+) {
 	console.Debug().Printf(
 		"Responding with type: %s, version: %s, resources: %d",
 		resp.GetTypeUrl(),

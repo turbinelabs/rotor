@@ -45,7 +45,7 @@ type resourceAdapter func(*poller.Objects) (cache.Resources, error)
 // SnapshotAdapter turns poller.Objects into a cache.Snapshot
 type snapshotAdapter func(*poller.Objects) (cache.Snapshot, error)
 
-// NewSnapshotAdapter creates an SnapshotAdapter from the given ResourceAdapter
+// NewSnapshotAdapter creates an SnapshotAdapter from the given ResourceAdapters.
 func newSnapshotAdapter(
 	adaptEndpoints resourceAdapter,
 	adaptClusters resourceAdapter,
