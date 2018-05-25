@@ -133,6 +133,20 @@ func NewUpdaterFromFlags(flagset tbnflag.FlagSet) UpdaterFromFlags {
 		"The port on which Envoys consuming the standalone xDS server should listen. Ignored if --api.key is specified.",
 	)
 
+	xdsFlagset.StringVar(
+		&ff.standaloneProxyName,
+		"standalone-cluster",
+		adapter.DefaultCluster,
+		"The name of the cluster for the Envoys consuming the standalone xDS server. Should match the --service-cluster flag for the envoy binary, or the ENVOY_NODE_CLUSTER value for the envoy-simple Docker image.",
+	)
+
+	xdsFlagset.StringVar(
+		&ff.standaloneZoneName,
+		"standalone-zone",
+		adapter.DefaultZone,
+		"The name of the zone for the Envoys consuming the standalone xDS server. Should match the --service-zone flag for the envoy binary, or the ENVOY_NODE_ZONE value for the envoy-simple Docker image.",
+	)
+
 	ff.startXDS = ff.asyncStartXDS
 	ff.pollLoop = asyncPollLoop
 
@@ -140,17 +154,19 @@ func NewUpdaterFromFlags(flagset tbnflag.FlagSet) UpdaterFromFlags {
 }
 
 type updaterFromFlags struct {
-	disableXDS         bool
-	apiConfigFromFlags apiflags.APIConfigFromFlags
-	apiClientFromFlags apiflags.ClientFromFlags
-	zoneFromFlags      apiflags.ZoneFromFlags
-	updaterFromFlags   updater.FromFlags
-	xdsFromFlags       adapter.XDSFromFlags
-	pollerFromFlags    poller.FromFlags
-	statsFromFlags     stats.FromFlags
-	standalonePort     int
-	startXDS           func(adapter.XDS)
-	pollLoop           func(poller.Poller)
+	disableXDS          bool
+	apiConfigFromFlags  apiflags.APIConfigFromFlags
+	apiClientFromFlags  apiflags.ClientFromFlags
+	zoneFromFlags       apiflags.ZoneFromFlags
+	updaterFromFlags    updater.FromFlags
+	xdsFromFlags        adapter.XDSFromFlags
+	pollerFromFlags     poller.FromFlags
+	statsFromFlags      stats.FromFlags
+	standalonePort      int
+	standaloneProxyName string
+	standaloneZoneName  string
+	startXDS            func(adapter.XDS)
+	pollLoop            func(poller.Poller)
 }
 
 func (ff *updaterFromFlags) Validate() error {
@@ -243,16 +259,23 @@ func (ff *updaterFromFlags) Make() (updater.Updater, error) {
 
 	if ff.apiConfigFromFlags.APIKey() == "" {
 		if ff.disableXDS {
-			return nil, errors.New("No --api.key specified. " +
-				"Cannot use standalone mode because xDS is disabled.")
+			return nil, errors.New("no --api.key specified; " +
+				"cannot use standalone mode because xDS is disabled")
 		}
 
 		console.Info().Printf(
 			"No --api.key specified. "+
-				"Using standalone mode: Envoys will be configured to serve on port %d",
+				"Using standalone mode: Envoys will be configured to serve on port %d, "+
+				"for Envoy cluster %q in zone %q.",
 			ff.standalonePort,
+			ff.standaloneProxyName,
+			ff.standaloneZoneName,
 		)
-		newUpdater, registrar := ff.updaterFromFlags.MakeStandalone(ff.standalonePort)
+		newUpdater, registrar := ff.updaterFromFlags.MakeStandalone(
+			ff.standalonePort,
+			ff.standaloneProxyName,
+			ff.standaloneZoneName,
+		)
 
 		var err error
 		xds, err = ff.xdsFromFlags.Make(registrar)

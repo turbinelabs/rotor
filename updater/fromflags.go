@@ -33,7 +33,11 @@ import (
 type FromFlags interface {
 	Validate() error
 	Make(service.All, api.Zone) Updater
-	MakeStandalone(port int) (func(poller.Consumer) Updater, poller.Registrar)
+	MakeStandalone(
+		port int,
+		proxyName,
+		zoneName string,
+	) (func(poller.Consumer) Updater, poller.Registrar)
 }
 
 const defaultDelaySeconds = 30
@@ -107,8 +111,12 @@ func (ff *fromFlags) Make(svc service.All, zone api.Zone) Updater {
 	)
 }
 
-func (ff *fromFlags) MakeStandalone(port int) (func(poller.Consumer) Updater, poller.Registrar) {
-	newDiffer, reg := differ.NewStandalone(port)
+func (ff *fromFlags) MakeStandalone(
+	port int,
+	proxyName,
+	zoneName string,
+) (func(poller.Consumer) Updater, poller.Registrar) {
+	newDiffer, reg := differ.NewStandalone(port, proxyName, zoneName)
 	return func(consumer poller.Consumer) Updater {
 		return New(newDiffer(consumer), ff.delay, *ff.diffOpts, "")
 	}, reg

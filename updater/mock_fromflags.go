@@ -59,14 +59,14 @@ func (mr *MockFromFlagsMockRecorder) Make(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // MakeStandalone mocks base method
-func (m *MockFromFlags) MakeStandalone(port int) (func(poller.Consumer) Updater, poller.Registrar) {
-	ret := m.ctrl.Call(m, "MakeStandalone", port)
+func (m *MockFromFlags) MakeStandalone(port int, proxyName, zoneName string) (func(poller.Consumer) Updater, poller.Registrar) {
+	ret := m.ctrl.Call(m, "MakeStandalone", port, proxyName, zoneName)
 	ret0, _ := ret[0].(func(poller.Consumer) Updater)
 	ret1, _ := ret[1].(poller.Registrar)
 	return ret0, ret1
 }
 
 // MakeStandalone indicates an expected call of MakeStandalone
-func (mr *MockFromFlagsMockRecorder) MakeStandalone(port interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeStandalone", reflect.TypeOf((*MockFromFlags)(nil).MakeStandalone), port)
+func (mr *MockFromFlagsMockRecorder) MakeStandalone(port, proxyName, zoneName interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeStandalone", reflect.TypeOf((*MockFromFlags)(nil).MakeStandalone), port, proxyName, zoneName)
 }

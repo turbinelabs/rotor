@@ -20,37 +20,34 @@ import (
 	"fmt"
 
 	"github.com/turbinelabs/api"
-	"github.com/turbinelabs/rotor/xds/adapter"
 	"github.com/turbinelabs/rotor/xds/poller"
 )
-
-var (
-	standaloneZone = api.Zone{ZoneKey: adapter.DefaultZone, Name: adapter.DefaultZone}
-)
-
-func mkStandaloneProxy(dks ...api.DomainKey) api.Proxy {
-	return api.Proxy{
-		ZoneKey:    adapter.DefaultZone,
-		ProxyKey:   adapter.DefaultCluster,
-		Name:       adapter.DefaultCluster,
-		DomainKeys: dks,
-	}
-}
 
 // standaloneDiffer produces always produces Create diffs, and the Patch call
 // takes those create diffs and creates a simple poller.Objects serving "/"
 // on a specified port for each cluster, with the cluster host/port as the
 // domain name.
 type standaloneDiffer struct {
-	port     int
-	consumer poller.Consumer
+	port      int
+	consumer  poller.Consumer
+	proxyName string
+	zoneName  string
 }
 
 // NewStandalone produces a function that will create a Differ from a
 // poller.Consumer, and a Registrar suitable for injection into an xDS.
-func NewStandalone(port int) (func(poller.Consumer) Differ, poller.Registrar) {
+func NewStandalone(
+	port int,
+	proxyName,
+	zoneName string,
+) (func(poller.Consumer) Differ, poller.Registrar) {
 	return func(consumer poller.Consumer) Differ {
-		return standaloneDiffer{port: port, consumer: consumer}
+		return standaloneDiffer{
+			port:      port,
+			consumer:  consumer,
+			proxyName: proxyName,
+			zoneName:  zoneName,
+		}
 	}, poller.NewNopRegistrar()
 }
 
@@ -111,8 +108,14 @@ func (d standaloneDiffer) Patch(diffs []Diff) error {
 		}
 	}
 
-	objs.Proxy = mkStandaloneProxy(dks...)
-	objs.Zone = standaloneZone
+	objs.Proxy = api.Proxy{
+		ZoneKey:    api.ZoneKey(d.zoneName),
+		ProxyKey:   api.ProxyKey(d.proxyName),
+		Name:       d.proxyName,
+		DomainKeys: dks,
+	}
+
+	objs.Zone = api.Zone{ZoneKey: api.ZoneKey(d.zoneName), Name: d.zoneName}
 
 	d.consumer.Consume(objs)
 

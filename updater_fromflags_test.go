@@ -69,14 +69,16 @@ func newUFFMocks(t *testing.T) *uffMocks {
 		ctrl:               ctrl,
 	}
 	uffm.ff = updaterFromFlags{
-		apiConfigFromFlags: uffm.apiConfigFromFlags,
-		apiClientFromFlags: uffm.apiClientFromFlags,
-		zoneFromFlags:      uffm.zoneFromFlags,
-		updaterFromFlags:   uffm.updaterFromFlags,
-		xdsFromFlags:       uffm.xdsFromFlags,
-		pollerFromFlags:    uffm.pollerFromFlags,
-		statsFromFlags:     uffm.statsFromFlags,
-		standalonePort:     1234,
+		apiConfigFromFlags:  uffm.apiConfigFromFlags,
+		apiClientFromFlags:  uffm.apiClientFromFlags,
+		zoneFromFlags:       uffm.zoneFromFlags,
+		updaterFromFlags:    uffm.updaterFromFlags,
+		xdsFromFlags:        uffm.xdsFromFlags,
+		pollerFromFlags:     uffm.pollerFromFlags,
+		statsFromFlags:      uffm.statsFromFlags,
+		standalonePort:      1234,
+		standaloneProxyName: "that-cluster",
+		standaloneZoneName:  "that-zone",
 	}
 	return uffm
 }
@@ -277,7 +279,9 @@ func (tc uffMakeTestCase) run(t *testing.T) {
 			return mockUpdater
 		}
 		mocks.expect(
-			mocks.updaterFromFlags.EXPECT().MakeStandalone(1234).Return(newUpdater, mockRegistrar),
+			mocks.updaterFromFlags.EXPECT().
+				MakeStandalone(1234, "that-cluster", "that-zone").
+				Return(newUpdater, mockRegistrar),
 		)
 
 		if tc.xdsMakeErr != nil {
@@ -407,7 +411,7 @@ func TestUpdaterFromFlagsMakeStandaloneXDSFromFlagsErr(t *testing.T) {
 }
 
 func TestUpdaterFromFlagsMakeStandaloneWithXDSDisabled(t *testing.T) {
-	err := errors.New("No --api.key specified. Cannot use standalone mode because xDS is disabled.")
+	err := errors.New("no --api.key specified; cannot use standalone mode because xDS is disabled")
 	uffMakeTestCase{
 		disableXDS:     true,
 		wantStandalone: true,

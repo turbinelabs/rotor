@@ -55,7 +55,12 @@ func TestStandaloneDifferPatch(t *testing.T) {
 
 	consumer := poller.NewMockConsumer(ctrl)
 
-	sd := standaloneDiffer{port: 1234, consumer: consumer}
+	sd := standaloneDiffer{
+		port:      1234,
+		consumer:  consumer,
+		proxyName: "that-proxy",
+		zoneName:  "that-zone",
+	}
 
 	diffs := []Diff{
 		NewDiffCreate(api.Cluster{Name: "C1"}),
@@ -130,12 +135,12 @@ func TestStandaloneDifferPatch(t *testing.T) {
 			},
 		},
 		Proxy: api.Proxy{
-			ZoneKey:    "default-zone",
-			ProxyKey:   "default-cluster",
-			Name:       "default-cluster",
+			ZoneKey:    "that-zone",
+			ProxyKey:   "that-proxy",
+			Name:       "that-proxy",
 			DomainKeys: []api.DomainKey{"C1:1234", "C2:1234", "C3:1234"},
 		},
-		Zone: api.Zone{ZoneKey: "default-zone", Name: "default-zone"},
+		Zone: api.Zone{ZoneKey: "that-zone", Name: "that-zone"},
 	}
 
 	captor := matcher.CaptureType(reflect.TypeOf(want))
