@@ -26,6 +26,14 @@ import (
 
 //go:generate $TBN_HOME/scripts/mockgen_internal.sh -type snapshotCache -source $GOFILE -destination mock_$GOFILE -package $GOPACKAGE --write_package_comment=false
 
+const (
+	// DefaultCluster is used as the Node's cluster name if none is provided
+	DefaultCluster = "default-cluster"
+
+	// DefaultZone is used as the Node's zone name if none is provided
+	DefaultZone = "default-zone"
+)
+
 // convenience interface for mocking
 type snapshotCache interface {
 	SetSnapshot(node string, snapshot cache.Snapshot) error
@@ -64,12 +72,16 @@ func proxyRefFromNode(node *core.Node) service.ProxyRef {
 		return nil
 	}
 
-	var zoneName string
-	if node.Locality != nil {
+	zoneName := DefaultZone
+	if node.Locality != nil && node.Locality.GetZone() != "" {
 		zoneName = node.Locality.GetZone()
 	}
 
-	proxyName := node.GetCluster()
+	proxyName := DefaultCluster
+	if node.GetCluster() != "" {
+		proxyName = node.GetCluster()
+	}
+
 	zRef := service.NewZoneNameZoneRef(zoneName)
 	return service.NewProxyNameProxyRef(proxyName, zRef)
 }

@@ -198,15 +198,11 @@ func newStreamState(req *envoyapi.DiscoveryRequest) *streamState {
 	}
 
 	proxyRef := proxyRefFromNode(req.Node)
-	zone := ""
-	if proxyRef.ZoneRef() != nil {
-		zone = proxyRef.ZoneRef().Name()
-	}
 
 	return &streamState{
 		nodeID:  req.Node.GetId(),
 		proxy:   proxyRef.Name(),
-		zone:    zone,
+		zone:    proxyRef.ZoneRef().Name(),
 		typeURL: req.GetTypeUrl(),
 	}
 }

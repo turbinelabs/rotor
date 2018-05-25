@@ -44,7 +44,7 @@ func TestTbnProxyNodeHashIDNilLocality(t *testing.T) {
 	got := tbnProxyNodeHash{}.ID(&core.Node{
 		Cluster: "the-proxy",
 	})
-	want := `{"proxy_name":"the-proxy","zone_name":""}`
+	want := `{"proxy_name":"the-proxy","zone_name":"default-zone"}`
 	assert.Equal(t, got, want)
 }
 
@@ -53,7 +53,7 @@ func TestTbnProxyNodeHashIDEmptyZone(t *testing.T) {
 		Cluster:  "the-proxy",
 		Locality: &core.Locality{},
 	})
-	want := `{"proxy_name":"the-proxy","zone_name":""}`
+	want := `{"proxy_name":"the-proxy","zone_name":"default-zone"}`
 	assert.Equal(t, got, want)
 }
 
@@ -63,6 +63,6 @@ func TestTbnProxyNodeHashIDEmptyCluster(t *testing.T) {
 			Zone: "the-zone",
 		},
 	})
-	want := `{"proxy_name":"","zone_name":"the-zone"}`
+	want := `{"proxy_name":"default-cluster","zone_name":"the-zone"}`
 	assert.Equal(t, got, want)
 }

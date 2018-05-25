@@ -105,9 +105,6 @@ func TestStreamAccessLogsErrors(t *testing.T) {
 	expectedErrors := []string{
 		"missing log identifier",
 		"missing log identifier.node",
-		"missing log identifier.node.locality.zone",
-		"missing log identifier.node.locality.zone",
-		"missing log identifier.node.cluster",
 		"missing log identifier.node.id",
 		"missing log identifier.logName",
 		"unexpected log type: ",
@@ -130,34 +127,6 @@ func TestStreamAccessLogsErrors(t *testing.T) {
 		// missing identifier.node
 		&accesslog.StreamAccessLogsMessage{
 			Identifier: &accesslog.StreamAccessLogsMessage_Identifier{
-				LogName: "id",
-			},
-		},
-
-		// missing identifier.node.locality
-		&accesslog.StreamAccessLogsMessage{
-			Identifier: &accesslog.StreamAccessLogsMessage_Identifier{
-				Node:    &core.Node{},
-				LogName: "id",
-			},
-		},
-
-		// missing identifier.node.locality.zone
-		&accesslog.StreamAccessLogsMessage{
-			Identifier: &accesslog.StreamAccessLogsMessage_Identifier{
-				Node: &core.Node{
-					Locality: &core.Locality{},
-				},
-				LogName: "id",
-			},
-		},
-
-		// missing identifier.node.cluster
-		&accesslog.StreamAccessLogsMessage{
-			Identifier: &accesslog.StreamAccessLogsMessage_Identifier{
-				Node: &core.Node{
-					Locality: &core.Locality{Zone: "zone-name"},
-				},
 				LogName: "id",
 			},
 		},

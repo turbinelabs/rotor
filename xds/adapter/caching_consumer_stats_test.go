@@ -74,6 +74,8 @@ func TestNewStreamState(t *testing.T) {
 		&streamState{
 			typeURL: "type-url",
 			nodeID:  "node-id",
+			proxy:   "default-cluster",
+			zone:    "default-zone",
 		},
 	)
 
@@ -92,6 +94,7 @@ func TestNewStreamState(t *testing.T) {
 			typeURL: "type-url",
 			nodeID:  "node-id",
 			proxy:   "proxy",
+			zone:    "default-zone",
 		},
 	)
 

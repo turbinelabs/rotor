@@ -20,23 +20,19 @@ import (
 	"fmt"
 
 	"github.com/turbinelabs/api"
+	"github.com/turbinelabs/rotor/xds/adapter"
 	"github.com/turbinelabs/rotor/xds/poller"
 )
 
-const (
-	zoneName  = "default-zone"
-	proxyName = "default-cluster"
-)
-
 var (
-	standaloneZone = api.Zone{ZoneKey: zoneName, Name: zoneName}
+	standaloneZone = api.Zone{ZoneKey: adapter.DefaultZone, Name: adapter.DefaultZone}
 )
 
 func mkStandaloneProxy(dks ...api.DomainKey) api.Proxy {
 	return api.Proxy{
-		ZoneKey:    zoneName,
-		ProxyKey:   proxyName,
-		Name:       proxyName,
+		ZoneKey:    adapter.DefaultZone,
+		ProxyKey:   adapter.DefaultCluster,
+		Name:       adapter.DefaultCluster,
 		DomainKeys: dks,
 	}
 }
