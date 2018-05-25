@@ -1,7 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rotor
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: rotor
+  namespace: rotor
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -11,15 +17,17 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: rotor
+  namespace: rotor
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: rotor
+  namespace: rotor
 subjects:
 - kind: ServiceAccount
   name: rotor
-  namespace: default # Change this if you are working in a different namespace.
+  namespace: rotor
 roleRef:
   kind: ClusterRole
   name: rotor
@@ -29,6 +37,7 @@ apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: rotor
+  namespace: rotor
 spec:
   template:
     metadata:
@@ -52,6 +61,7 @@ metadata:
   labels:
     run: rotor
   name: rotor
+  namespace: rotor
 spec:
   ports:
   - port: 50000
