@@ -1,0 +1,28 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: example-pod
+spec:
+  template:
+    metadata:
+      labels:
+        run: example-pod
+        # This label indicates the cluster name, and that it should be collected by Rotor.
+        # It can be customized with `ROTOR_KUBERNETES_CLUSTER_LABEL`
+        tbn_cluster: <foo>
+          # This is the stage label, set to prod in order to apply to the release
+          # workflow.
+        stage: prod
+        # This is the version label set to a relevant item.
+        version: <bar>
+    spec:
+      containers:
+      - image: <example_image>
+        imagePullPolicy: Always
+        name: example-pod
+        ports:
+          - containerPort: 8080
+            # This is the where you name your port, which should match the value
+            # of `ROTOR_KUBERNETES_PORT_NAME`
+            name: http
+            protocol: TCP

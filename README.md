@@ -115,12 +115,24 @@ Rotor. The easiest way to create all these is via
 [the YAML file](examples/kubernetes-rotor.yaml) in this repo:
 
 ```bash
-kubectl create -f https://github.com/turbinelabs/rotor/blob/master/examples/kubernetes-rotor.yaml
+kubectl create -f https://github.com/turbinelabs/rotor/blob/master/examples/kubernetes/kubernetes-rotor.yaml
 ```
 
-Labels will be collected from Pods (not Deployments or Services). Add a
-`tbn_cluster` label to each Pod Spec with the name of the service you want it
-grouped by.
+Rotor discovers clusters by looking for active pods in Kubernetes and grouping
+them based on their labels. You will have to add two pieces of information to
+each pod to have Rotor recognize it:
+
+  - A `tbn_cluster: <name>` label to name the service to which the Pod belongs. The label key can be customized.
+
+  - An exposed port named `http` or a customized name.
+  A pod must have both the `tbn_cluster` label and a port named `http` to be collected by Rotor.
+
+Rotor will also collect all other labels on the Pod, which can be used for
+routing.
+
+An example of a pod with labels correctly configured is included
+[here](https://github.com/turbinelabs/rotor/blog/master/examples/kubernetes/example-pod.yaml).
+An [example Envoy-simple yaml](https://github.com/turbinelabs/rotor/blog/master/examples/kubernetes/envoy-simple.yaml) is also included.
 
 ### Consul
 
@@ -152,10 +164,10 @@ $ docker run -d \
 turbinelabs/rotor:0.16.0
 ```
 
-You need to tag instances with the service name and port it exposes 
+You need to tag instances with the service name and port it exposes
 by adding a tag of the format `tbn:cluster:<cluster-name>:<port-name>`.
-Instances that serve more than one port can be tagged multiple times. 
-For example, to expose two services from a single instance on ports 
+Instances that serve more than one port can be tagged multiple times.
+For example, to expose two services from a single instance on ports
 8080 and 8081, you can tag the instance by running:
 
 ```
@@ -180,10 +192,10 @@ $ docker run -d \
 turbinelabs/rotor:0.16.0
 ```
 
-You can run this inside or outside of ECS itself, as long as your 
+You can run this inside or outside of ECS itself, as long as your
 Envoy instances have access to the container on port 50000.
 
-ECS tags indicate the service name and exposed port, and they 
+ECS tags indicate the service name and exposed port, and they
 are located with `dockerLabels` on the container definition:
 
 ```json
@@ -226,14 +238,14 @@ Deploy the app with:
 dcos marathon app add rotor.json
 ```
 
-To have rotor pick up services, add `tbn_cluster` labels to each container 
+To have rotor pick up services, add `tbn_cluster` labels to each container
 definition with the service name.
 
 ### Flat files
 
-Rotor can read from flat files that define clusters and instances. To 
-specify the format of the file, use the `--format` flag (or the 
-`ROTOR_FILE_FORMAT` environment variable). Possible values are "json" 
+Rotor can read from flat files that define clusters and instances. To
+specify the format of the file, use the `--format` flag (or the
+`ROTOR_FILE_FORMAT` environment variable). Possible values are "json"
 and "yaml", and the default value is "json".
 
 ```console
@@ -260,10 +272,11 @@ The format defines clusters and the associated instances:
 
 ## Envoy
 
-Once Rotor is running, you can configure Envoy to receive EDS, CDS, 
-RDS, and LDS configuration from it. You can put together a 
-bootstrap config based on the [Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/configuration/overview/v2_overview#dynamic), 
-or you can use [envoy-simple](https://github.com/turbinelabs/envoy-simple), 
+Once Rotor is running, you can configure Envoy to receive EDS, CDS,
+RDS, and LDS configuration from it. You can put together a bootstrap config
+based on the
+[Envoy docs](https://www.envoyproxy.io/docs/envoy/latest/configuration/overview/v2_overview#dynamic),
+or you can use [envoy-simple](https://github.com/turbinelabs/envoy-simple),
 a minimal Envoy container that can configured via environment variables.
 
 ```console
@@ -275,7 +288,8 @@ $ docker run -d \
  turbinelabs/envoy-simple:0.16.0
 ```
 
-You may have to modify the host and port, depending on where you have Rotor deployed.
+You may have to modify the host and port, depending on where you have Rotor
+deployed.
 
 If you are not using `envoy-simple`, you will have to set
 `--service-cluster=default-cluster` and `--service-zone=default-zone` flags on
@@ -283,38 +297,40 @@ your Envoy. With a Houston API key, Rotor is capable of serving many different
 Envoy configurations, depending on which Envoy is asking. In standalone mode,
 all Envoys are assumed to be part of the same Zone and Cluster, so you must make
 sure these values are passed to Rotor.  `envoy-simple` passes `default-cluster`
-and `default-zone` by default. To serve multiple configs, either run multiple 
-Rotors, fork Rotor and add your own config, or see [Using with Houston](#api-key).
+and `default-zone` by default. To serve multiple configs, either run multiple
+Rotors, fork Rotor and add your own config, or see
+[Using with Houston](#api-key).
 
-You can verify that Rotor and Envoy are working correctly together by curling 
+You can verify that Rotor and Envoy are working correctly together by curling
 the admin interface to Envoy to see the routes that have been set up:
 
 ```bash
 curl localhost:9999/config_dump
 ```
 
-If everything is working, you should see a JSON config object with routes for 
+If everything is working, you should see a JSON config object with routes for
 all your services.
 
 ## Configuration
 
-Global flags for Rotor can be listed with 
-`docker run turbinelabs/rotor:0.16.0 rotor --help`. Global flags can be be 
-passed via upper-case, underscore-delimited environment variables prefixed 
-with `ROTOR_`, with all non-alpha characters converted to underscores. For 
+Global flags for Rotor can be listed with
+`docker run turbinelabs/rotor:0.16.0 rotor --help`. Global flags can be be
+passed via upper-case, underscore-delimited environment variables prefixed
+with `ROTOR_`, with all non-alpha characters converted to underscores. For
 example, `--some-flag` becomes `ROTOR_SOME_FLAG`.
 
-Per-platform flags can be listed with 
-`docker run turbinelabs/rotor:0.16.0 rotor <platform> --help`. Per-platform 
-flags can be similarly passed as environment variables, prefixed with 
-`ROTOR_<PLATFORM>`. For example `--some-flag` for the kubernetes platform 
+Per-platform flags can be listed with
+`docker run turbinelabs/rotor:0.16.0 rotor <platform> --help`. Per-platform
+flags can be similarly passed as environment variables, prefixed with
+`ROTOR_<PLATFORM>`. For example `--some-flag` for the kubernetes platform
 becomes `ROTOR_KUBERNETES_SOME_FLAG`.
 
 **Note** Command-line flags take precedence over environment variables.
 
 ## Local Installation / Development
 
-For development, running tests, or custom integration, you may want to run Rotor locally.
+For development, running tests, or custom integration, you may want to run
+Rotor locally.
 
 ### Requirements
 
@@ -337,8 +353,8 @@ most interfaces are provided.
 
 The Rotor plugins depend on many packages, none of which is
 exposed in the public interfaces. This should be considered an opaque
-implementation detail,
-see [Vendoring](http://github.com/turbinelabs/developer/blob/master/README.md#vendoring)
+implementation detail, see
+[Vendoring](http://github.com/turbinelabs/developer/blob/master/README.md#vendoring)
 for more discussion.
 
 It should always be safe to use HEAD of all master branches of Turbine Labs
@@ -365,7 +381,8 @@ go test github.com/turbinelabs/rotor/...
 
 ## Versioning
 
-Please see [Versioning of Turbine Labs Open Source Projects](http://github.com/turbinelabs/developer/blob/master/README.md#versioning).
+Please see
+[Versioning of Turbine Labs Open Source Projects](http://github.com/turbinelabs/developer/blob/master/README.md#versioning).
 
 ## Pull Requests
 
@@ -375,22 +392,25 @@ service discovery. Please see
 
 ## API Key
 
-Rotor is also a part of a paid subscription to [Houston](https://turbinelabs.io). 
-By adding an API key to Rotor, you unlock traffic management for your whole team, including:
+Rotor is also a part of a paid subscription to
+[Houston](https://turbinelabs.io).
+By adding an API key to Rotor, you unlock traffic management for your whole
+team, including:
 
 - An easy-to-use UI for creating and modifying routes
 - Full configuration of all of Envoy’s features: advanced load balancing, health checking, circuit breakers, and more
 - Automatic collection of Envoy’s metrics for routes, clusters, and more, with easy integration into statsd, Prometheus, and other common dashboards
 
-Specifically, instead of the static routes described in [Features](#features), 
-an API key allows more flexible configuration of routes, domains, listeners, 
-and clusters through Houston. You can also run multiple Rotor processes to 
-bridge, e.g. EC2 and Kubernetes, allowing you configure routes that 
-incrementally migrate traffic from one to the other. Houston also collects 
-all the additional metadata on your instances, allowing you to route traffic 
+Specifically, instead of the static routes described in [Features](#features),
+an API key allows more flexible configuration of routes, domains, listeners,
+and clusters through Houston. You can also run multiple Rotor processes to
+bridge, e.g. EC2 and Kubernetes, allowing you configure routes that
+incrementally migrate traffic from one to the other. Houston also collects
+all the additional metadata on your instances, allowing you to route traffic
 based on custom tags and labels.
 
-If you already have an API key, see the [Turbine Labs docs](http://docs.turbinelabs.io/) 
+If you already have an API key, see the
+[Turbine Labs docs](http://docs.turbinelabs.io/)
 for how to get started.
 
 ## Code of Conduct

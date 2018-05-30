@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: envoy-simple
+spec:
+  template:
+    metadata:
+      labels:
+        run: envoy-simple
+    spec:
+      containers:
+      - image: turbinelabs/envoy-simple:0.16.0
+        imagePullPolicy: Always
+        name: envoy-simple
+        ports:
+          - containerPort: 80
+          - containerPort: 9999
+        env:
+        - name: ENVOY_XDS_HOST
+          value: "rotor.default.svc.cluster.local" # Change if using a different namespace
+        - name: ENVOY_XDS_PORT
+          value: "50000"
+        - name: ENVOY_NODE_ZONE
+          value: testbed
+        - name: ENVOY_NODE_CLUSTER
+          value: testbed-proxy
