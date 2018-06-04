@@ -314,7 +314,7 @@ all your services.
 ## Configuration
 
 Global flags for Rotor can be listed with
-`docker run --entrypoint rotor turbinelabs/rotor:0.17.0 <platform> --help`. Global flags can be be
+`docker run --entrypoint rotor turbinelabs/rotor:0.17.0 --help`. Global flags can be be
 passed via upper-case, underscore-delimited environment variables prefixed
 with `ROTOR_`, with all non-alpha characters converted to underscores. For
 example, `--some-flag` becomes `ROTOR_SOME_FLAG`.
