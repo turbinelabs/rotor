@@ -103,7 +103,7 @@ depends on your service discovery registry. To see the flags available for your
 SD, run:
 
 ```console
-$ docker run turbinelabs/rotor:0.17.0 rotor <platform> --help
+$ docker run -e "ROTOR_CMD=help" turbinelabs/rotor:0.17.0 <platform>
 ```
 
 where `<platform>` is one of: aws, ecs, consul, file, kubernetes, or marathon.
@@ -314,13 +314,13 @@ all your services.
 ## Configuration
 
 Global flags for Rotor can be listed with
-`docker run turbinelabs/rotor:0.17.0 rotor --help`. Global flags can be be
+`docker run -e "ROTOR_CMD=help" turbinelabs/rotor:0.17.0`. Global flags can be be
 passed via upper-case, underscore-delimited environment variables prefixed
 with `ROTOR_`, with all non-alpha characters converted to underscores. For
 example, `--some-flag` becomes `ROTOR_SOME_FLAG`.
 
 Per-platform flags can be listed with
-`docker run turbinelabs/rotor:0.17.0 rotor <platform> --help`. Per-platform
+`docker run -e "ROTOR_CMD=help" turbinelabs/rotor:0.17.0 <platform>`. Per-platform
 flags can be similarly passed as environment variables, prefixed with
 `ROTOR_<PLATFORM>`. For example `--some-flag` for the kubernetes platform
 becomes `ROTOR_KUBERNETES_SOME_FLAG`.

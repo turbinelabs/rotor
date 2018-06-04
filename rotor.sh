@@ -25,4 +25,4 @@ if [[ -z "${ROTOR_CMD}" ]]; then
   exit 1
 fi
 
-/usr/local/bin/rotor ${ROTOR_CMD}
+/usr/local/bin/rotor ${ROTOR_CMD} "$@"

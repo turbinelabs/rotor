@@ -40,4 +40,4 @@ RUN chmod +x /usr/local/bin/rotor.sh
 EXPOSE 50000
 
 # Use baseimage-docker's init system.
-CMD ["/sbin/my_init", "--", "/usr/local/bin/rotor.sh"]
+ENTRYPOINT ["/sbin/my_init", "--", "/usr/local/bin/rotor.sh"]
