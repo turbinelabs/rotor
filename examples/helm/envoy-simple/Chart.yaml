@@ -1,0 +1,16 @@
+apiVersion: v1
+name: Envoy-simple
+version: 1
+description: An installation of Envoy-simple, a bootstrapped version of Envoy Proxy
+keywords:
+  - envoy
+  - proxy
+  - http2
+home: https://github.com/turbinelabs/envoy-simple
+sources:
+  - https://github.com/turbinelabs/envoy-simple
+maintainers: # (optional)
+  - name: Turbine Labs
+    email: info@turbinelabs.io
+    url: https://turbinelabs.io
+appVersion: 0.17.0

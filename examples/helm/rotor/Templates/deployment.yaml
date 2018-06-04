@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rotor
+  namespace: default
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        run: rotor
+    spec:
+      containers:
+        - name: rotor
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - containerPort: 50000 # xDS server is exposed here
+          env:
+            - name: TBNCOLLECT_CMD
+              value: kubernetes
