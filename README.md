@@ -187,7 +187,7 @@ $ docker run -d \
 -e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
 -e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
 -e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
--e 'ROTOR_CMD=ecs \
+-e 'ROTOR_CMD=ecs' \
 -p 50000:50000 \
 turbinelabs/rotor:0.17.0
 ```
@@ -250,7 +250,7 @@ and "yaml", and the default value is "json".
 
 ```console
 $ docker run -d \
--e 'ROTOR_CMD=file \
+-e 'ROTOR_CMD=file' \
 -p 50000:50000 \
 turbinelabs/rotor:0.17.0 /path/to/file/in/container
 ```
