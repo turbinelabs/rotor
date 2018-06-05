@@ -32,10 +32,13 @@ import (
 )
 
 const fileDescription = `Watches the given JSON or YAML file and updates Clusters
-stored in the Turbine Labs API at startup and whenever the file changes.  The
-structure of the JSON and YAML formats is equivalent. Each contains 0 or more
-clusters identified by name, each containing 0 or more instances. For example,
-as YAML:
+stored in the Turbine Labs API at startup and whenever the file changes.
+
+The file can be specified as a flag or as the only argument (but not both).
+
+The structure of the JSON and YAML formats is equivalent. Each contains 0 or
+more clusters identified by name, each containing 0 or more instances. For
+example, as YAML:
 
     - cluster: c1
       instances:
@@ -77,10 +80,13 @@ func Cmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 	}
 
 	flags := tbnflag.Wrap(&cmd.Flags)
-	cmd.Runner = &fileRunner{
+	r := &fileRunner{
 		codecFlags:   codec.NewFromFlags(flags),
 		updaterFlags: updaterFlags,
 	}
+	cmd.Runner = r
+
+	cmd.Flags.StringVar(&r.file, "filename", "", "The file from which to collect")
 
 	return cmd
 }
@@ -96,8 +102,17 @@ func (r *fileRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 		return cmd.BadInput(err)
 	}
 
-	if len(args) != 1 {
-		return cmd.BadInput("takes a single file as an argument")
+	var file string
+	if r.file == "" {
+		if len(args) != 1 {
+			return cmd.BadInput("must specify filename as either flag or single argument")
+		}
+		file = filepath.Clean(args[0])
+	} else {
+		if len(args) != 0 {
+			return cmd.BadInput("cannot specify filename as both flag and argument")
+		}
+		file = filepath.Clean(r.file)
 	}
 
 	if err := r.codecFlags.Validate(); err != nil {
@@ -108,8 +123,6 @@ func (r *fileRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	if err != nil {
 		return cmd.Error(err)
 	}
-
-	file := filepath.Clean(args[0])
 
 	collector := NewCollector(file, updater, mkParser(r.codecFlags.Make()))
 	if err := collector.Run(); err != nil {

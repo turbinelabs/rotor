@@ -33,9 +33,10 @@ func TestCmd(t *testing.T) {
 	mockUpdaterFromFlags := rotor.NewMockUpdaterFromFlags(nil)
 
 	cmd := Cmd(mockUpdaterFromFlags)
-	cmd.Flags.Parse([]string{})
+	cmd.Flags.Parse([]string{"--filename", "foo"})
 	runner := cmd.Runner.(*fileRunner)
 	assert.Equal(t, runner.updaterFlags, mockUpdaterFromFlags)
+	assert.Equal(t, runner.file, "foo")
 	assert.NonNil(t, runner.codecFlags)
 }
 
@@ -65,7 +66,35 @@ func TestFileRunnerRunMissingFile(t *testing.T) {
 	mockFromFlags.EXPECT().Validate().Return(nil)
 
 	cmdErr := fr.Run(Cmd(mockFromFlags), nil)
-	assert.True(t, strings.Contains(cmdErr.Message, "single file"))
+	assert.True(t, strings.Contains(cmdErr.Message, "must specify filename as either flag or single argument"))
+}
+
+func TestFileRunnerRunMultipleArgs(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+
+	fr := fileRunner{updaterFlags: mockFromFlags}
+
+	mockFromFlags.EXPECT().Validate().Return(nil)
+
+	cmdErr := fr.Run(Cmd(mockFromFlags), []string{"x", "y"})
+	assert.True(t, strings.Contains(cmdErr.Message, "must specify filename as either flag or single argument"))
+}
+
+func TestFileRunnerRunFileAndFilename(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	mockFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
+
+	fr := fileRunner{updaterFlags: mockFromFlags, file: "y"}
+
+	mockFromFlags.EXPECT().Validate().Return(nil)
+
+	cmdErr := fr.Run(Cmd(mockFromFlags), []string{"x"})
+	assert.True(t, strings.Contains(cmdErr.Message, "cannot specify filename as both flag and argument"))
 }
 
 func TestFileRunnerRunCodecFlagsValidateError(t *testing.T) {
@@ -92,13 +121,13 @@ func TestFileRunnerRunUpdateMakeError(t *testing.T) {
 	mockFromFlags := rotor.NewMockUpdaterFromFlags(ctrl)
 	mockCodecFlags := codec.NewMockFromFlags(ctrl)
 
-	fr := fileRunner{updaterFlags: mockFromFlags, codecFlags: mockCodecFlags}
+	fr := fileRunner{updaterFlags: mockFromFlags, codecFlags: mockCodecFlags, file: "x"}
 
 	err := errors.New("boom")
 	mockFromFlags.EXPECT().Validate().Return(nil)
 	mockFromFlags.EXPECT().Make().Return(nil, err)
 	mockCodecFlags.EXPECT().Validate().Return(nil)
 
-	cmdErr := fr.Run(Cmd(mockFromFlags), []string{"x"})
+	cmdErr := fr.Run(Cmd(mockFromFlags), []string{})
 	assert.Equal(t, cmdErr.Message, fmt.Sprintf("file: %s", err))
 }

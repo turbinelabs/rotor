@@ -251,8 +251,9 @@ and "yaml", and the default value is "json".
 ```console
 $ docker run -d \
 -e 'ROTOR_CMD=file' \
+-e 'ROTOR_FILE_FILENAME=/path/to/file/in/container' \
 -p 50000:50000 \
-turbinelabs/rotor:0.17.0 /path/to/file/in/container
+turbinelabs/rotor:0.17.0
 ```
 
 The format defines clusters and the associated instances:
