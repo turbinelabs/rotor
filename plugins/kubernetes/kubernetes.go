@@ -19,8 +19,8 @@ limitations under the License.
 package kubernetes
 
 import (
-	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strings"
 	"time"
@@ -35,6 +35,7 @@ import (
 	"github.com/turbinelabs/cli/command"
 	tbnflag "github.com/turbinelabs/nonstdlib/flag"
 	"github.com/turbinelabs/nonstdlib/log/console"
+	"github.com/turbinelabs/nonstdlib/ptr"
 	"github.com/turbinelabs/rotor"
 	"github.com/turbinelabs/rotor/constants"
 	"github.com/turbinelabs/rotor/updater"
@@ -180,6 +181,14 @@ type kubernetesCollector struct {
 
 	k8sClient     *k8s.Clientset
 	labelSelector labels.Selector
+	debugLog      *log.Logger
+}
+
+func (c *kubernetesCollector) debug() *log.Logger {
+	if c.debugLog == nil {
+		return console.Debug()
+	}
+	return c.debugLog
 }
 
 func (c *kubernetesCollector) getClusters(client k8stypedv1.PodInterface) (api.Clusters, error) {
@@ -208,20 +217,24 @@ func (c *kubernetesCollector) getClusters(client k8stypedv1.PodInterface) (api.C
 }
 
 func (c *kubernetesCollector) makeInstance(pod k8sapiv1.Pod, port int) (string, api.Instance) {
-	debug := console.Debug()
-
 	host := pod.Status.PodIP
 	lbls := pod.GetLabels()
 	ans := pod.GetAnnotations()
 
 	clusterName := lbls[c.clusterNameLabel]
 	if clusterName == "" {
-		debug.Printf("Skipped Instance %s:%d: missing/empty cluster label", host, port)
+		c.debug().Printf(`Skipped pod "%s.%s": missing/empty cluster label`, pod.Namespace, pod.Name)
 		return "", api.Instance{}
 	}
 
-	debug.Printf("Saw Instance %s:%d for Cluster %s", host, port, clusterName)
-
+	c.debug().Printf(
+		`Adding pod "%s.%s" (%s:%d) in Cluster %s`,
+		pod.Namespace,
+		pod.Name,
+		host,
+		port,
+		clusterName,
+	)
 	metadata := api.Metadata{}
 
 	for key, value := range lbls {
@@ -265,32 +278,67 @@ func (c *kubernetesCollector) isContainerRunning(pod k8sapiv1.Pod) bool {
 	return true
 }
 
-func (c *kubernetesCollector) findContainerPort(pod k8sapiv1.Pod) (int, error) {
+func (c *kubernetesCollector) findContainerPort(pod k8sapiv1.Pod) *int {
 	for _, container := range pod.Spec.Containers {
 		for _, port := range container.Ports {
 			if port.Protocol == k8sapiv1.ProtocolTCP {
-				if c.portName == "" || port.Name == c.portName {
-					return int(port.ContainerPort), nil
+				if c.portName == "" {
+					c.debug().Printf(
+						`Adding port %d on pod "%s.%s", because it was the first port encountered and --port-name is empty. To use a named port, set --port-name`,
+						port.ContainerPort,
+						pod.Namespace,
+						pod.Name,
+					)
+					return ptr.Int(int(port.ContainerPort))
+				}
+				if port.Name == c.portName {
+					c.debug().Printf(
+						`Adding named port %s:%d on pod "%s.%s". To use a different named port, set --port-name.`,
+						c.portName,
+						port.ContainerPort,
+						pod.Namespace,
+						pod.Name,
+					)
+					return ptr.Int(int(port.ContainerPort))
 				}
 			}
 		}
 	}
 
-	return -1, errors.New("unable to find container port")
+	return nil
 }
 
 func (c *kubernetesCollector) handlePod(clusters map[string]*api.Cluster, pod k8sapiv1.Pod) {
-	port, err := c.findContainerPort(pod)
-	if err != nil {
-		// port may be unassigned at startup or shutdown, ignore its absence
+	port := c.findContainerPort(pod)
+	if port == nil {
+		if c.portName == "" {
+			c.debug().Printf(
+				`Ignoring pod "%s.%s", because it exposes no ports`,
+				pod.Namespace,
+				pod.Name,
+			)
+		} else {
+			// port may be unassigned at startup or shutdown, ignore its absence
+			c.debug().Printf(
+				`Ignoring pod "%s.%s", because it has no port named %q (can be configured with --port-name).`,
+				pod.Namespace,
+				pod.Name,
+				c.portName,
+			)
+		}
 		return
 	}
 
 	if !c.isContainerRunning(pod) {
+		c.debug().Printf(
+			`Ignoring pod "%s.%s", because it has at least one non-running container.`,
+			pod.Namespace,
+			pod.Name,
+		)
 		return
 	}
 
-	clusterName, instance := c.makeInstance(pod, port)
+	clusterName, instance := c.makeInstance(pod, *port)
 
 	if clusterName == "" {
 		return

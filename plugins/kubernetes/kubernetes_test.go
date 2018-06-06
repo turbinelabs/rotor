@@ -20,6 +20,7 @@ package kubernetes
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -32,10 +33,11 @@ import (
 	"github.com/turbinelabs/rotor"
 	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/test/assert"
+	testlog "github.com/turbinelabs/test/log"
 )
 
 const (
-	podIp   = "10.0.0.1"
+	podIP   = "10.0.0.1"
 	podPort = 80
 )
 
@@ -48,16 +50,17 @@ var (
 func makePod(
 	clusterName string,
 	hasPort bool,
+	portName string,
 	ready bool,
 ) k8sapiv1.Pod {
 	var ports []k8sapiv1.ContainerPort
 	if hasPort {
 		ports = []k8sapiv1.ContainerPort{
-			{Protocol: k8sapiv1.ProtocolTCP, ContainerPort: podPort},
+			{Protocol: k8sapiv1.ProtocolTCP, ContainerPort: podPort, Name: portName},
 		}
 	}
 
-	return k8sapiv1.Pod{
+	pod := k8sapiv1.Pod{
 		ObjectMeta: k8smetav1.ObjectMeta{
 			Labels: map[string]string{
 				"clusterName": clusterName,
@@ -81,11 +84,16 @@ func makePod(
 			PodIP: "10.0.0.1",
 		},
 	}
+	pod.SetName(fmt.Sprintf("%s-%t-%t", clusterName, hasPort, ready))
+	pod.SetNamespace("namespace")
+	return pod
 }
 
 func TestKubernetesHandlePod(t *testing.T) {
+	debug, logBuffer := testlog.NewBufferLogger()
 	collector := kubernetesCollector{
 		k8sCollectorSettings: k8sCollectorSettings{clusterNameLabel: "clusterName"},
+		debugLog:             debug,
 	}
 
 	cluster := api.Cluster{
@@ -96,7 +104,7 @@ func TestKubernetesHandlePod(t *testing.T) {
 	expectedCluster := api.Cluster{
 		Name: "cluster1",
 		Instances: []api.Instance{
-			{Host: podIp, Port: podPort, Metadata: podMetadata},
+			{Host: podIP, Port: podPort, Metadata: podMetadata},
 		},
 	}
 
@@ -104,16 +112,51 @@ func TestKubernetesHandlePod(t *testing.T) {
 		"cluster1": &cluster,
 	}
 
-	pod := makePod("cluster1", true, true)
+	pod := makePod("cluster1", true, "", true)
 
 	collector.handlePod(clusters, pod)
 
 	assert.DeepEqual(t, clusters, map[string]*api.Cluster{"cluster1": &expectedCluster})
+	assert.Equal(t, logBuffer.String(), "Adding port 80 on pod \"namespace.cluster1-true-true\", because it was the first port encountered and --port-name is empty. To use a named port, set --port-name\nAdding pod \"namespace.cluster1-true-true\" (10.0.0.1:80) in Cluster cluster1\n")
+}
+
+func TestKubernetesHandlePodSkipOnNoPorts(t *testing.T) {
+	debug, logBuffer := testlog.NewBufferLogger()
+	collector := kubernetesCollector{
+		k8sCollectorSettings: k8sCollectorSettings{
+			clusterNameLabel: "clusterName",
+			portName:         "",
+		},
+		debugLog: debug,
+	}
+
+	cluster := api.Cluster{
+		Name:      "cluster1",
+		Instances: []api.Instance{},
+	}
+
+	expectedCluster := cluster
+
+	clusters := map[string]*api.Cluster{
+		"cluster1": &cluster,
+	}
+
+	pod := makePod("cluster1", false, "", true)
+
+	collector.handlePod(clusters, pod)
+
+	assert.DeepEqual(t, clusters, map[string]*api.Cluster{"cluster1": &expectedCluster})
+	assert.Equal(t, logBuffer.String(), "Ignoring pod \"namespace.cluster1-false-true\", because it exposes no ports\n")
 }
 
 func TestKubernetesHandlePodSkipOnMissingPort(t *testing.T) {
+	debug, logBuffer := testlog.NewBufferLogger()
 	collector := kubernetesCollector{
-		k8sCollectorSettings: k8sCollectorSettings{clusterNameLabel: "clusterName"},
+		k8sCollectorSettings: k8sCollectorSettings{
+			clusterNameLabel: "clusterName",
+			portName:         "portName",
+		},
+		debugLog: debug,
 	}
 
 	cluster := api.Cluster{
@@ -127,16 +170,47 @@ func TestKubernetesHandlePodSkipOnMissingPort(t *testing.T) {
 		"cluster1": &cluster,
 	}
 
-	pod := makePod("cluster1", false, true)
+	pod := makePod("cluster1", false, "", true)
 
 	collector.handlePod(clusters, pod)
 
 	assert.DeepEqual(t, clusters, map[string]*api.Cluster{"cluster1": &expectedCluster})
+	assert.Equal(t, logBuffer.String(), "Ignoring pod \"namespace.cluster1-false-true\", because it has no port named \"portName\" (can be configured with --port-name).\n")
+}
+
+func TestKubernetesHandlePodSkipOnDifferentlyNamedPort(t *testing.T) {
+	debug, logBuffer := testlog.NewBufferLogger()
+	collector := kubernetesCollector{
+		k8sCollectorSettings: k8sCollectorSettings{
+			clusterNameLabel: "clusterName",
+			portName:         "portName",
+		},
+		debugLog: debug,
+	}
+
+	cluster := api.Cluster{
+		Name:      "cluster1",
+		Instances: []api.Instance{},
+	}
+
+	expectedCluster := cluster
+
+	clusters := map[string]*api.Cluster{
+		"cluster1": &cluster,
+	}
+
+	pod := makePod("cluster1", false, "otherName", true)
+	collector.handlePod(clusters, pod)
+
+	assert.DeepEqual(t, clusters, map[string]*api.Cluster{"cluster1": &expectedCluster})
+	assert.Equal(t, logBuffer.String(), "Ignoring pod \"namespace.cluster1-false-true\", because it has no port named \"portName\" (can be configured with --port-name).\n")
 }
 
 func TestKubernetesHandlePodSkipOnNotReady(t *testing.T) {
+	debug, logBuffer := testlog.NewBufferLogger()
 	collector := kubernetesCollector{
 		k8sCollectorSettings: k8sCollectorSettings{clusterNameLabel: "clusterName"},
+		debugLog:             debug,
 	}
 
 	cluster := api.Cluster{
@@ -150,16 +224,19 @@ func TestKubernetesHandlePodSkipOnNotReady(t *testing.T) {
 		"cluster1": &cluster,
 	}
 
-	pod := makePod("cluster1", true, false)
+	pod := makePod("cluster1", true, "", false)
 
 	collector.handlePod(clusters, pod)
 
 	assert.DeepEqual(t, clusters, map[string]*api.Cluster{"cluster1": &expectedCluster})
+	assert.Equal(t, logBuffer.String(), "Adding port 80 on pod \"namespace.cluster1-true-false\", because it was the first port encountered and --port-name is empty. To use a named port, set --port-name\nIgnoring pod \"namespace.cluster1-true-false\", because it has at least one non-running container.\n")
 }
 
 func TestKubernetesHandlePodSkipOnMissingCluster(t *testing.T) {
+	debug, logBuffer := testlog.NewBufferLogger()
 	collector := kubernetesCollector{
 		k8sCollectorSettings: k8sCollectorSettings{clusterNameLabel: "missingLabel"},
+		debugLog:             debug,
 	}
 
 	cluster := api.Cluster{
@@ -173,11 +250,12 @@ func TestKubernetesHandlePodSkipOnMissingCluster(t *testing.T) {
 		"cluster1": &cluster,
 	}
 
-	pod := makePod("cluster1", true, true)
+	pod := makePod("cluster1", true, "", true)
 
 	collector.handlePod(clusters, pod)
 
 	assert.DeepEqual(t, clusters, map[string]*api.Cluster{"cluster1": &expectedCluster})
+	assert.Equal(t, logBuffer.String(), "Adding port 80 on pod \"namespace.cluster1-true-true\", because it was the first port encountered and --port-name is empty. To use a named port, set --port-name\nSkipped pod \"namespace.cluster1-true-true\": missing/empty cluster label\n")
 }
 
 func TestKubernetesIsContainerRunning(t *testing.T) {
@@ -280,7 +358,8 @@ func TestKubernetesIsContainerRunning(t *testing.T) {
 }
 
 func TestKubernetesFindContainerPort(t *testing.T) {
-	collector := kubernetesCollector{}
+	debug, _ := testlog.NewBufferLogger()
+	collector := kubernetesCollector{debugLog: debug}
 
 	pod := k8sapiv1.Pod{
 		Spec: k8sapiv1.PodSpec{
@@ -288,9 +367,8 @@ func TestKubernetesFindContainerPort(t *testing.T) {
 		},
 	}
 
-	port, err := collector.findContainerPort(pod)
-	assert.NonNil(t, err)
-	assert.Equal(t, port, -1)
+	port := collector.findContainerPort(pod)
+	assert.Nil(t, port)
 
 	pod = k8sapiv1.Pod{
 		Spec: k8sapiv1.PodSpec{
@@ -307,9 +385,8 @@ func TestKubernetesFindContainerPort(t *testing.T) {
 		},
 	}
 
-	port, err = collector.findContainerPort(pod)
-	assert.NonNil(t, err)
-	assert.Equal(t, port, -1)
+	port = collector.findContainerPort(pod)
+	assert.Nil(t, port)
 
 	pod = k8sapiv1.Pod{
 		Spec: k8sapiv1.PodSpec{
@@ -326,9 +403,10 @@ func TestKubernetesFindContainerPort(t *testing.T) {
 		},
 	}
 
-	port, err = collector.findContainerPort(pod)
-	assert.Nil(t, err)
-	assert.Equal(t, port, 80)
+	port = collector.findContainerPort(pod)
+	if assert.NonNil(t, port) {
+		assert.Equal(t, *port, 80)
+	}
 
 	pod = k8sapiv1.Pod{
 		Spec: k8sapiv1.PodSpec{
@@ -349,9 +427,10 @@ func TestKubernetesFindContainerPort(t *testing.T) {
 		},
 	}
 
-	port, err = collector.findContainerPort(pod)
-	assert.Nil(t, err)
-	assert.Equal(t, port, 80)
+	port = collector.findContainerPort(pod)
+	if assert.NonNil(t, port) {
+		assert.Equal(t, *port, 80)
+	}
 
 	pod = k8sapiv1.Pod{
 		Spec: k8sapiv1.PodSpec{
@@ -374,10 +453,10 @@ func TestKubernetesFindContainerPort(t *testing.T) {
 	}
 
 	collector.portName = "pickme"
-	port, err = collector.findContainerPort(pod)
-	assert.Nil(t, err)
-	assert.Equal(t, port, 100)
-
+	port = collector.findContainerPort(pod)
+	if assert.NonNil(t, port) {
+		assert.Equal(t, *port, 100)
+	}
 }
 
 func TestKubernetesMakeInstance(t *testing.T) {
