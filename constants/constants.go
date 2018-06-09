@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package constants contains constants shared accross plugin packages.
+// Package constants contains constants shared across plugin packages.
 package constants
 
 // DefaultClusterLabelName is the default name for a service discovery label
