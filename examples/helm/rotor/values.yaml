@@ -5,5 +5,5 @@
 replicaCount: 1
 restartPolicy: Never
 
-image: turbinelabs/rotor:0.17.1
+image: turbinelabs/rotor:0.17.2
 imagePullPolicy: Always

@@ -14,4 +14,4 @@ maintainers: # (optional)
     email: info@turbinelabs.io
     url: https://turbinelabs.io
 icon: https://raw.githubusercontent.com/turbinelabs/rotor/master/rotor.png
-appVersion: 0.17.1
+appVersion: 0.17.2
