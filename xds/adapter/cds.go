@@ -84,10 +84,12 @@ func (s cds) tbnToEnvoyCluster(
 		}
 
 		if s.caFile != "" {
-			tlsContext.CommonTlsContext.ValidationContext = &envoyauth.CertificateValidationContext{
-				TrustedCa: &envoycore.DataSource{
-					Specifier: &envoycore.DataSource_Filename{
-						Filename: s.caFile,
+			tlsContext.CommonTlsContext.ValidationContextType = &envoyauth.CommonTlsContext_ValidationContext{
+				ValidationContext: &envoyauth.CertificateValidationContext{
+					TrustedCa: &envoycore.DataSource{
+						Specifier: &envoycore.DataSource_Filename{
+							Filename: s.caFile,
+						},
 					},
 				},
 			}

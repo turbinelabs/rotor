@@ -62,6 +62,7 @@
     "envoy/config/filter/accesslog/v2",
     "envoy/config/filter/http/router/v2",
     "envoy/config/filter/network/http_connection_manager/v2",
+    "envoy/data/accesslog/v2",
     "envoy/service/accesslog/v2",
     "envoy/service/discovery/v2",
     "envoy/type",
@@ -70,7 +71,7 @@
     "pkg/server",
     "pkg/util"
   ]
-  revision = "v0.2"
+  revision = "bc01fbfcb66faf0bf61e1e98a7b189689a7066a1"
 
 [[projects]]
   name = "github.com/gambol99/go-marathon"
@@ -455,6 +456,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "646a1470ee7271c7df926aea6ef8be1e69bbd6570b83ff2ec54af5b6cfacb8e9"
+  inputs-digest = "1782c64bf8d80b054d44ba77e7565efb8784fa13147d434d0893c2208b795d63"
   solver-name = "gps-cdcl"
   solver-version = 1

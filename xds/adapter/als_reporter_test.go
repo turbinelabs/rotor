@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	envoylog "github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2"
+	envoylog "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/turbinelabs/cache"

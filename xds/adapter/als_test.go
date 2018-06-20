@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	filter "github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2"
+	envoylog "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
 	accesslog "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
@@ -170,7 +170,7 @@ func TestStreamAccessLogsErrors(t *testing.T) {
 			},
 			LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 				HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-					LogEntry: []*filter.HTTPAccessLogEntry{{}},
+					LogEntry: []*envoylog.HTTPAccessLogEntry{{}},
 				},
 			},
 		},
@@ -227,7 +227,7 @@ func TestStreamAccessLogsIgnoresBadData(t *testing.T) {
 			},
 			LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 				HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-					LogEntry: []*filter.HTTPAccessLogEntry{nil, nil, nil},
+					LogEntry: []*envoylog.HTTPAccessLogEntry{nil, nil, nil},
 				},
 			},
 		},
@@ -240,7 +240,7 @@ func TestStreamAccessLogsIgnoresBadData(t *testing.T) {
 			},
 			LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 				HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-					LogEntry: []*filter.HTTPAccessLogEntry{{}},
+					LogEntry: []*envoylog.HTTPAccessLogEntry{{}},
 				},
 			},
 		},
@@ -253,9 +253,9 @@ func TestStreamAccessLogsIgnoresBadData(t *testing.T) {
 			},
 			LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 				HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-					LogEntry: []*filter.HTTPAccessLogEntry{
+					LogEntry: []*envoylog.HTTPAccessLogEntry{
 						{
-							CommonProperties: &filter.AccessLogCommon{},
+							CommonProperties: &envoylog.AccessLogCommon{},
 						},
 					},
 				},
@@ -270,10 +270,10 @@ func TestStreamAccessLogsIgnoresBadData(t *testing.T) {
 			},
 			LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 				HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-					LogEntry: []*filter.HTTPAccessLogEntry{
+					LogEntry: []*envoylog.HTTPAccessLogEntry{
 						{
-							CommonProperties: &filter.AccessLogCommon{},
-							Request:          &filter.HTTPRequestProperties{},
+							CommonProperties: &envoylog.AccessLogCommon{},
+							Request:          &envoylog.HTTPRequestProperties{},
 						},
 					},
 				},
@@ -324,9 +324,9 @@ func testStreamAccessLogs(t *testing.T, mode string, setStartTime bool) {
 				},
 				LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 					HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-						LogEntry: []*filter.HTTPAccessLogEntry{
+						LogEntry: []*envoylog.HTTPAccessLogEntry{
 							{
-								CommonProperties: &filter.AccessLogCommon{
+								CommonProperties: &envoylog.AccessLogCommon{
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
@@ -340,7 +340,7 @@ func testStreamAccessLogs(t *testing.T, mode string, setStartTime bool) {
 									TimeToLastDownstreamTxByte: ptr.Duration(2 * time.Second),
 									TimeToLastUpstreamRxByte:   ptr.Duration(1 * time.Second),
 								},
-								Request: &filter.HTTPRequestProperties{
+								Request: &envoylog.HTTPRequestProperties{
 									RequestMethod: core.POST,
 									// Envoy delivers these in lower case.
 									RequestHeaders: map[string]string{
@@ -351,7 +351,7 @@ func testStreamAccessLogs(t *testing.T, mode string, setStartTime bool) {
 										strings.ToLower(headerConstraintKey):  "constraint",
 									},
 								},
-								Response: &filter.HTTPResponseProperties{
+								Response: &envoylog.HTTPResponseProperties{
 									ResponseCode: &types.UInt32Value{200},
 								},
 							},
@@ -436,9 +436,9 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 				},
 				LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 					HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-						LogEntry: []*filter.HTTPAccessLogEntry{
+						LogEntry: []*envoylog.HTTPAccessLogEntry{
 							{
-								CommonProperties: &filter.AccessLogCommon{
+								CommonProperties: &envoylog.AccessLogCommon{
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
@@ -452,8 +452,8 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 									TimeToLastDownstreamTxByte: ptr.Duration(2 * time.Second),
 									TimeToLastUpstreamRxByte:   ptr.Duration(1 * time.Second),
 								},
-								Request: &filter.HTTPRequestProperties{RequestMethod: core.POST},
-								Response: &filter.HTTPResponseProperties{
+								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
+								Response: &envoylog.HTTPResponseProperties{
 									ResponseCode: &types.UInt32Value{200},
 								},
 							},
@@ -465,9 +465,9 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 				Identifier: nil,
 				LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 					HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-						LogEntry: []*filter.HTTPAccessLogEntry{
+						LogEntry: []*envoylog.HTTPAccessLogEntry{
 							{
-								CommonProperties: &filter.AccessLogCommon{
+								CommonProperties: &envoylog.AccessLogCommon{
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
@@ -481,8 +481,8 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 									TimeToLastDownstreamTxByte: ptr.Duration(2 * time.Second),
 									TimeToLastUpstreamRxByte:   ptr.Duration(1 * time.Second),
 								},
-								Request: &filter.HTTPRequestProperties{RequestMethod: core.POST},
-								Response: &filter.HTTPResponseProperties{
+								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
+								Response: &envoylog.HTTPResponseProperties{
 									ResponseCode: &types.UInt32Value{200},
 								},
 							},
@@ -536,9 +536,9 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 				},
 				LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 					HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-						LogEntry: []*filter.HTTPAccessLogEntry{
+						LogEntry: []*envoylog.HTTPAccessLogEntry{
 							{
-								CommonProperties: &filter.AccessLogCommon{
+								CommonProperties: &envoylog.AccessLogCommon{
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
@@ -552,8 +552,8 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 									TimeToLastDownstreamTxByte: ptr.Duration(2 * time.Second),
 									TimeToLastUpstreamRxByte:   ptr.Duration(1 * time.Second),
 								},
-								Request: &filter.HTTPRequestProperties{RequestMethod: core.POST},
-								Response: &filter.HTTPResponseProperties{
+								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
+								Response: &envoylog.HTTPResponseProperties{
 									ResponseCode: &types.UInt32Value{200},
 								},
 							},
@@ -568,9 +568,9 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 				},
 				LogEntries: &accesslog.StreamAccessLogsMessage_HttpLogs{
 					HttpLogs: &accesslog.StreamAccessLogsMessage_HTTPAccessLogEntries{
-						LogEntry: []*filter.HTTPAccessLogEntry{
+						LogEntry: []*envoylog.HTTPAccessLogEntry{
 							{
-								CommonProperties: &filter.AccessLogCommon{
+								CommonProperties: &envoylog.AccessLogCommon{
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
@@ -584,8 +584,8 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 									TimeToLastDownstreamTxByte: ptr.Duration(2 * time.Second),
 									TimeToLastUpstreamRxByte:   ptr.Duration(1 * time.Second),
 								},
-								Request: &filter.HTTPRequestProperties{RequestMethod: core.POST},
-								Response: &filter.HTTPResponseProperties{
+								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
+								Response: &envoylog.HTTPResponseProperties{
 									ResponseCode: &types.UInt32Value{200},
 								},
 							},

@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	filter "github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2"
+	envoylog "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
 	accesslog "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
 
 	statsapi "github.com/turbinelabs/api/service/stats/v2"
@@ -174,7 +174,7 @@ func (a *als) StreamAccessLogs(stream accesslog.AccessLogService_StreamAccessLog
 	}
 }
 
-func (a *als) record(metadata *streamMetadata, entry *filter.HTTPAccessLogEntry) error {
+func (a *als) record(metadata *streamMetadata, entry *envoylog.HTTPAccessLogEntry) error {
 	isUpstream := metadata.logID == grpcUpstreamLogID
 	if !isUpstream && metadata.logID != grpcAccessLogID {
 		return fmt.Errorf("invalid log ID: %q", metadata.logID)

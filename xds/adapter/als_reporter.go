@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	envoylog "github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2"
+	envoylog "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
 	"github.com/turbinelabs/cache"
 	"github.com/turbinelabs/nonstdlib/log/console"
 	tbntime "github.com/turbinelabs/nonstdlib/time"

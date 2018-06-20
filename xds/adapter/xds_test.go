@@ -23,7 +23,7 @@ import (
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
-	envoyfilter "github.com/envoyproxy/go-control-plane/envoy/config/filter/accesslog/v2"
+	envoylog "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v2"
 	envoyals "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v2"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
@@ -191,9 +191,9 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 			},
 			LogEntries: &envoyals.StreamAccessLogsMessage_HttpLogs{
 				HttpLogs: &envoyals.StreamAccessLogsMessage_HTTPAccessLogEntries{
-					LogEntry: []*envoyfilter.HTTPAccessLogEntry{
+					LogEntry: []*envoylog.HTTPAccessLogEntry{
 						{
-							CommonProperties: &envoyfilter.AccessLogCommon{
+							CommonProperties: &envoylog.AccessLogCommon{
 								StartTime:       ptr.Time(time.Now()),
 								UpstreamCluster: "upstream",
 								UpstreamRemoteAddress: &envoycore.Address{
@@ -206,7 +206,7 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 								},
 								TimeToLastDownstreamTxByte: ptr.Duration(1 * time.Second),
 							},
-							Request: &envoyfilter.HTTPRequestProperties{
+							Request: &envoylog.HTTPRequestProperties{
 								RequestMethod: envoycore.POST,
 								RequestHeaders: map[string]string{
 									headerDomainKey:      "domain",
@@ -216,7 +216,7 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 									headerConstraintKey:  "constraint",
 								},
 							},
-							Response: &envoyfilter.HTTPResponseProperties{
+							Response: &envoylog.HTTPResponseProperties{
 								ResponseCode: &types.UInt32Value{200},
 							},
 						},

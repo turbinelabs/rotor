@@ -94,10 +94,12 @@ func TestManyClusters(t *testing.T) {
 						TlsMinimumProtocolVersion: envoyauth.TlsParameters_TLS_AUTO,
 						TlsMaximumProtocolVersion: envoyauth.TlsParameters_TLS_AUTO,
 					},
-					ValidationContext: &envoyauth.CertificateValidationContext{
-						TrustedCa: &envoycore.DataSource{
-							Specifier: &envoycore.DataSource_Filename{
-								Filename: "/etc/tls/ca.pem",
+					ValidationContextType: &envoyauth.CommonTlsContext_ValidationContext{
+						ValidationContext: &envoyauth.CertificateValidationContext{
+							TrustedCa: &envoycore.DataSource{
+								Specifier: &envoycore.DataSource_Filename{
+									Filename: "/etc/tls/ca.pem",
+								},
 							},
 						},
 					},
