@@ -71,7 +71,7 @@
     "pkg/server",
     "pkg/util"
   ]
-  revision = "bc01fbfcb66faf0bf61e1e98a7b189689a7066a1"
+  revision = "v0.3"
 
 [[projects]]
   name = "github.com/gambol99/go-marathon"
@@ -456,6 +456,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1782c64bf8d80b054d44ba77e7565efb8784fa13147d434d0893c2208b795d63"
+  inputs-digest = "cca90f9d839f0386d57856d35132a68aa9c76dbcc907c91dbe9ff05332cb5991"
   solver-name = "gps-cdcl"
   solver-version = 1
