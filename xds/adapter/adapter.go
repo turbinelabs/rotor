@@ -20,7 +20,6 @@ limitations under the License.
 package adapter
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"net"
@@ -30,8 +29,6 @@ import (
 
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 
 	tbnapi "github.com/turbinelabs/api"
@@ -145,22 +142,6 @@ var (
 		},
 	}
 )
-
-// messageToStruct encodes a protobuf Message into a Struct. Hilariously, it
-// uses JSON as the intermediary
-func messageToStruct(msg proto.Message) (*types.Struct, error) {
-	buf := &bytes.Buffer{}
-	if err := (&jsonpb.Marshaler{}).Marshal(buf, msg); err != nil {
-		return nil, err
-	}
-
-	pbs := &types.Struct{}
-	if err := jsonpb.Unmarshal(buf, pbs); err != nil {
-		return nil, err
-	}
-
-	return pbs, nil
-}
 
 func mkEnvoyAddress(host string, port int) *envoycore.Address {
 	return &envoycore.Address{

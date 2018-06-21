@@ -73,7 +73,7 @@ func mkFileDataSource(filename string) *envoycore.DataSource {
 }
 
 func mkGRPCAccessLog(id string, cluster string, format log.Format) (*envoylog.AccessLog, error) {
-	grpcAccessLog, err := messageToStruct(&envoyals.HttpGrpcAccessLogConfig{
+	grpcAccessLog, err := util.MessageToStruct(&envoyals.HttpGrpcAccessLogConfig{
 		CommonConfig: &envoyals.CommonGrpcAccessLogConfig{
 			LogName: id,
 			GrpcService: &envoycore.GrpcService{
@@ -119,7 +119,7 @@ func (s lds) mkHTTPRouterStruct() (*types.Struct, error) {
 	}
 
 	if upstreamLog != nil {
-		return messageToStruct(&envoyrouter.Router{
+		return util.MessageToStruct(&envoyrouter.Router{
 			UpstreamLog: []*envoylog.AccessLog{upstreamLog},
 		})
 	}
@@ -215,7 +215,7 @@ func (s lds) mkListener(
 		return nil, err
 	}
 
-	httpFilter, err := messageToStruct(httpConnManager)
+	httpFilter, err := util.MessageToStruct(httpConnManager)
 	if err != nil {
 		return nil, err
 	}

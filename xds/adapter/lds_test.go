@@ -104,19 +104,19 @@ func TestMkHttpConnectionManagerWithGRPCLog(t *testing.T) {
 				{
 					Name: util.Router,
 					Config: mapToStruct(t, map[string]interface{}{
-						"upstreamLog": []map[string]interface{}{
+						"upstream_log": []map[string]interface{}{
 							{
 								"name": util.HTTPGRPCAccessLog,
 								"config": map[string]interface{}{
-									"commonConfig": map[string]interface{}{
-										"logName": grpcUpstreamLogID,
-										"grpcService": map[string]interface{}{
-											"envoyGrpc": map[string]interface{}{
-												"clusterName": "log-cluster",
+									"common_config": map[string]interface{}{
+										"log_name": grpcUpstreamLogID,
+										"grpc_service": map[string]interface{}{
+											"envoy_grpc": map[string]interface{}{
+												"cluster_name": "log-cluster",
 											},
 										},
 									},
-									"additionalRequestHeadersToLog": log.EnvoyGRPCRequestHeaders(
+									"additional_request_headers_to_log": log.EnvoyGRPCRequestHeaders(
 										log.TbnUpstreamFormat,
 									),
 								},
@@ -135,15 +135,15 @@ func TestMkHttpConnectionManagerWithGRPCLog(t *testing.T) {
 				{
 					Name: util.HTTPGRPCAccessLog,
 					Config: mapToStruct(t, map[string]interface{}{
-						"commonConfig": map[string]interface{}{
-							"logName": grpcAccessLogID,
-							"grpcService": map[string]interface{}{
-								"envoyGrpc": map[string]interface{}{
-									"clusterName": "log-cluster",
+						"common_config": map[string]interface{}{
+							"log_name": grpcAccessLogID,
+							"grpc_service": map[string]interface{}{
+								"envoy_grpc": map[string]interface{}{
+									"cluster_name": "log-cluster",
 								},
 							},
 						},
-						"additionalRequestHeadersToLog": log.EnvoyGRPCRequestHeaders(
+						"additional_request_headers_to_log": log.EnvoyGRPCRequestHeaders(
 							log.TbnAccessFormat,
 						),
 					}),
@@ -178,13 +178,13 @@ func TestEmptyRequestSeveralDomains(t *testing.T) {
 	httpConnMgr8080, err := s.mkHTTPConnectionManager("main-test-proxy", 8080)
 	assert.Nil(t, err)
 
-	httpFilter8080, err := messageToStruct(httpConnMgr8080)
+	httpFilter8080, err := util.MessageToStruct(httpConnMgr8080)
 	assert.Nil(t, err)
 
 	httpConnMgr8443, err := s.mkHTTPConnectionManager("main-test-proxy", 8443)
 	assert.Nil(t, err)
 
-	httpFilter8443, err := messageToStruct(httpConnMgr8443)
+	httpFilter8443, err := util.MessageToStruct(httpConnMgr8443)
 	assert.Nil(t, err)
 
 	expectedEnvoyListeners := []envoyapi.Listener{
