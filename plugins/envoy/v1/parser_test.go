@@ -38,7 +38,26 @@ const (
           {
             "url": "tcp://127.0.0.1:8125"
           }
-        ]
+        ],
+        "health_check": {
+          "timeout_ms": 100,
+          "interval_ms": 2000,
+          "unhealthy_threshold": 20,
+          "healthy_threshold": 10,
+          "type": "tcp",
+          "send": [
+            {"binary": "EEEEEEEE"},
+            {"binary": "01000000"},
+            {"binary": "00000000"},
+            {"binary": "0000000000000000"},
+            {"binary": "00000000"},
+            {"binary": "11000000"},
+            {"binary": "01"},
+            {"binary": "6f6b"},
+            {"binary": "00000000000000f03f"},
+            {"binary": "00"}
+          ]
+        }
       },
       {
         "name": "backhaul",
@@ -68,6 +87,14 @@ const (
           "enforcing_consecutive_5xx": 100,
           "enforcing_consecutive_gateway_failure": 0,
           "enforcing_success_rate": 0
+        },
+        "health_check": {
+          "timeout_ms": 100,
+          "interval_ms": 2000,
+          "unhealthy_threshold": 20,
+          "healthy_threshold": 10,
+          "type": "http",
+          "path": "/hc/backhaul"
         }
       },
       {
@@ -124,7 +151,26 @@ const (
           {
             "url": "tcp://127.0.0.1:8125"
           }
-        ]
+        ],
+        "health_check": {
+          "timeout_ms": 100,
+          "interval_ms": 2000,
+          "unhealthy_threshold": 20,
+          "healthy_threshold": 10,
+          "type": "tcp",
+          "send": [
+            {"binary": "EEEEEEEE"},
+            {"binary": "01000000"},
+            {"binary": "00000000"},
+            {"binary": "0000000000000000"},
+            {"binary": "00000000"},
+            {"binary": "11000000"},
+            {"binary": "01"},
+            {"binary": "6f6b"},
+            {"binary": "00000000000000f03f"},
+            {"binary": "00"}
+          ]
+        }
       },
       {
         "name": "backhaul",
@@ -148,6 +194,14 @@ const (
           "enforcing_consecutive_5xx": 100,
           "enforcing_consecutive_gateway_failure": 0,
           "enforcing_success_rate": 0
+        },
+        "health_check": {
+          "timeout_ms": 100,
+          "interval_ms": 2000,
+          "unhealthy_threshold": 20,
+          "healthy_threshold": 10,
+          "type": "http",
+          "path": "/hc/backhaul"
         }
       },
       {
@@ -210,7 +264,26 @@ const (
           {
             "url": "tcp://127.0.0.1:8125"
           }
-        ]
+        ],
+        "health_check": {
+          "timeout_ms": 100,
+          "interval_ms": 2000,
+          "unhealthy_threshold": 20,
+          "healthy_threshold": 10,
+          "type": "tcp",
+          "send": [
+            {"binary": "EEEEEEEE"},
+            {"binary": "01000000"},
+            {"binary": "00000000"},
+            {"binary": "0000000000000000"},
+            {"binary": "00000000"},
+            {"binary": "11000000"},
+            {"binary": "01"},
+            {"binary": "6f6b"},
+            {"binary": "00000000000000f03f"},
+            {"binary": "00"}
+          ]
+        }
       },
       {
         "name": "sds_cluster",
@@ -238,6 +311,14 @@ const (
           "enforcing_consecutive_5xx": 100,
           "enforcing_consecutive_gateway_failure": 0,
           "enforcing_success_rate": 0
+        },
+        "health_check": {
+          "timeout_ms": 100,
+          "interval_ms": 2000,
+          "unhealthy_threshold": 20,
+          "healthy_threshold": 10,
+          "type": "http",
+          "path": "/hc/backhaul"
         }
       },
       {
@@ -273,6 +354,23 @@ cluster_manager:
     type: static
     hosts:
     - url: tcp://127.0.0.1:8125
+    health_check:
+      timeout_ms: 100
+      interval_ms: 2000
+      unhealthy_threshold: 20
+      healthy_threshold: 10
+      type: "tcp"
+      send:
+      - binary: "EEEEEEEE"
+      - binary: "01000000"
+      - binary: "00000000"
+      - binary: "0000000000000000"
+      - binary: "00000000"
+      - binary: "11000000"
+      - binary: "01"
+      - binary: "6f6b"
+      - binary: "00000000000000f03f"
+      - binary: "00"
   - name: backhaul
     type: strict_dns
     hosts:
@@ -289,6 +387,13 @@ cluster_manager:
       enforcing_consecutive_5xx: 100
       enforcing_consecutive_gateway_failure: 0
       enforcing_success_rate: 0
+    health_check:
+      timeout_ms: 100
+      interval_ms: 2000
+      unhealthy_threshold: 20
+      healthy_threshold: 10
+      type: "http"
+      path: "/hc/backhaul"
   - name: lightstep_saas
     type: logical_dns
     hosts:
@@ -397,6 +502,19 @@ var (
 				Host: "127.0.0.1",
 				Port: 8125,
 			}},
+			HealthChecks: api.HealthChecks{
+				{
+					TimeoutMsec:        100,
+					IntervalMsec:       2000,
+					UnhealthyThreshold: 20,
+					HealthyThreshold:   10,
+					HealthChecker: api.HealthChecker{
+						TCPHealthCheck: &api.TCPHealthCheck{
+							Send: "7u7u7gEAAAAAAAAAAAAAAAAAAAAAAAAAEQAAAAFvawAAAAAAAADwPwA=",
+						},
+					},
+				},
+			},
 		},
 		{
 			Name: "backhaul",
@@ -416,6 +534,19 @@ var (
 				EnforcingConsecutive5xx:            ptr.Int(100),
 				EnforcingConsecutiveGatewayFailure: ptr.Int(0),
 				EnforcingSuccessRate:               ptr.Int(0),
+			},
+			HealthChecks: api.HealthChecks{
+				{
+					TimeoutMsec:        100,
+					IntervalMsec:       2000,
+					UnhealthyThreshold: 20,
+					HealthyThreshold:   10,
+					HealthChecker: api.HealthChecker{
+						HTTPHealthCheck: &api.HTTPHealthCheck{
+							Path: "/hc/backhaul",
+						},
+					},
+				},
 			},
 		},
 		{

@@ -140,6 +140,7 @@ func mkStaticCluster(sc *envoyapi.Cluster) (*api.Cluster, []error) {
 		Instances:        is,
 		CircuitBreakers:  envoyToTbnCircuitBreakers(sc.GetCircuitBreakers()),
 		OutlierDetection: envoyToTbnOutlierDetection(sc.GetOutlierDetection()),
+		HealthChecks:     envoyToTbnHealthChecks(sc.GetHealthChecks()),
 	}, errs
 }
 
@@ -181,7 +182,8 @@ func mkDynamicCluster(
 		RequireTLS:       dc.GetTlsContext() != nil,
 		Instances:        is,
 		CircuitBreakers:  envoyToTbnCircuitBreakers(dc.GetCircuitBreakers()),
-		OutlierDetection: envoyToTbnOutlierDetection(dc.OutlierDetection),
+		OutlierDetection: envoyToTbnOutlierDetection(dc.GetOutlierDetection()),
+		HealthChecks:     envoyToTbnHealthChecks(dc.GetHealthChecks()),
 	}, errs
 }
 

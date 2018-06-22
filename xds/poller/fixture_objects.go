@@ -23,7 +23,7 @@ import (
 
 // FixtureHash is the expected result calling TerribleHash() on the *Objects
 // produced by MkFixtureObjects()
-const FixtureHash = "rukqDgEELgbLZyDROUs71Q=="
+const FixtureHash = "vFNPzCa3ArqfR6siOxzMaw=="
 
 // MkFixtureObjects produces a *Objects that exercises most of the surface area
 // of the API, suitable for testing.
@@ -82,6 +82,29 @@ func MkFixtureObjects() *Objects {
 					EnforcingConsecutiveGatewayFailure: ptr.Int(0),
 					EnforcingSuccessRate:               ptr.Int(0),
 				},
+				HealthChecks: api.HealthChecks{
+					{
+						TimeoutMsec:           100,
+						IntervalMsec:          10000,
+						IntervalJitterMsec:    ptr.Int(300),
+						UnhealthyThreshold:    10,
+						HealthyThreshold:      5,
+						NoTrafficIntervalMsec: ptr.Int(15000),
+						UnhealthyIntervalMsec: ptr.Int(30000),
+						HealthChecker: api.HealthChecker{
+							HTTPHealthCheck: &api.HTTPHealthCheck{
+								Host: "checker.com",
+								Path: "/hc",
+								RequestHeadersToAdd: api.Metadata{
+									{
+										Key:   "hc-req",
+										Value: "true",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 			{
 				ClusterKey: "C3",
@@ -127,6 +150,22 @@ func MkFixtureObjects() *Objects {
 					EnforcingConsecutive5xx:            ptr.Int(0),
 					EnforcingConsecutiveGatewayFailure: ptr.Int(0),
 					EnforcingSuccessRate:               ptr.Int(100),
+				},
+				HealthChecks: api.HealthChecks{
+					{
+						TimeoutMsec:           100,
+						IntervalMsec:          15000,
+						IntervalJitterMsec:    ptr.Int(300),
+						UnhealthyThreshold:    10,
+						HealthyThreshold:      5,
+						NoTrafficIntervalMsec: ptr.Int(15000),
+						UnhealthyIntervalMsec: ptr.Int(30000),
+						HealthChecker: api.HealthChecker{
+							TCPHealthCheck: &api.TCPHealthCheck{
+								Send: "aGVhbHRoIGNoZWNrCg==",
+							},
+						},
+					},
 				},
 			},
 		},

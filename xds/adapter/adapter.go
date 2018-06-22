@@ -20,6 +20,7 @@ limitations under the License.
 package adapter
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math"
 	"net"
@@ -226,6 +227,22 @@ func boolValue(b bool) *types.BoolValue {
 	return &types.BoolValue{Value: b}
 }
 
+func boolPtrToBoolValue(bPtr *bool) *types.BoolValue {
+	if bPtr == nil {
+		return nil
+	}
+
+	return boolValue(*bPtr)
+}
+
+func boolValueToBoolPtr(bv *types.BoolValue) *bool {
+	if bv == nil {
+		return nil
+	}
+
+	return ptr.Bool(bv.Value)
+}
+
 func uint32Value(v uint32) *types.UInt32Value {
 	return &types.UInt32Value{Value: v}
 }
@@ -241,7 +258,11 @@ func intPtrToUint32Ptr(intPtr *int) *types.UInt32Value {
 		return nil
 	}
 
-	return &types.UInt32Value{Value: uint32(*intPtr)}
+	return intToUint32Ptr(*intPtr)
+}
+
+func intToUint32Ptr(i int) *types.UInt32Value {
+	return &types.UInt32Value{Value: uint32(i)}
 }
 
 func uint32PtrToIntPtr(ui32 *types.UInt32Value) *int {
@@ -252,14 +273,27 @@ func uint32PtrToIntPtr(ui32 *types.UInt32Value) *int {
 	return ptr.Int(int(ui32.GetValue()))
 }
 
+func uint32PtrToInt(ui32 *types.UInt32Value) int {
+	iPtr := uint32PtrToIntPtr(ui32)
+	if iPtr == nil {
+		return 0
+	}
+
+	return *iPtr
+}
+
 func intPtrToDurationPtr(intPtr *int) *types.Duration {
 	if intPtr == nil {
 		return nil
 	}
 
+	return intToDurationPtr(*intPtr)
+}
+
+func intToDurationPtr(i int) *types.Duration {
 	return &types.Duration{
-		Seconds: int64(*intPtr / 1000),
-		Nanos:   int32((*intPtr % 1000) * int(time.Millisecond)),
+		Seconds: int64(i / 1000),
+		Nanos:   int32((i % 1000) * int(time.Millisecond)),
 	}
 }
 
@@ -281,4 +315,46 @@ func durationPtrToIntPtr(d *types.Duration) *int {
 	}
 
 	return ptr.Int(int(final))
+}
+
+func durationPtrToInt(d *types.Duration) int {
+	iPtr := durationPtrToIntPtr(d)
+	if iPtr == nil {
+		return 0
+	}
+
+	return *iPtr
+}
+
+func base64StringToPayload(str string) (*envoycore.HealthCheck_Payload, error) {
+	if len(str) == 0 {
+		return nil, nil
+	}
+
+	sb, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytesToPayload(sb), nil
+}
+
+func bytesToPayload(b []byte) *envoycore.HealthCheck_Payload {
+	if len(b) == 0 {
+		return nil
+	}
+
+	return &envoycore.HealthCheck_Payload{
+		Payload: &envoycore.HealthCheck_Payload_Binary{
+			Binary: b,
+		},
+	}
+}
+
+func bytesToBase64String(b []byte) string {
+	if b == nil {
+		return ""
+	}
+
+	return base64.StdEncoding.EncodeToString(b)
 }

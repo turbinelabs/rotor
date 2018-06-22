@@ -41,8 +41,11 @@ type cds struct {
 func (s cds) resourceAdapter(objects *poller.Objects) (cache.Resources, error) {
 	resources := make(map[string]cache.Resource, len(objects.Clusters))
 	for _, cluster := range objects.Clusters {
-		envoyCluster := s.tbnToEnvoyCluster(cluster, objects)
-		resources[envoyCluster.GetName()] = s.tbnToEnvoyCluster(cluster, objects)
+		envoyCluster, err := s.tbnToEnvoyCluster(cluster, objects)
+		if err != nil {
+			return cache.Resources{}, err
+		}
+		resources[envoyCluster.GetName()] = envoyCluster
 	}
 	return cache.Resources{Version: objects.TerribleHash(), Items: resources}, nil
 }
@@ -50,7 +53,7 @@ func (s cds) resourceAdapter(objects *poller.Objects) (cache.Resources, error) {
 func (s cds) tbnToEnvoyCluster(
 	tbnCluster tbnapi.Cluster,
 	objects *poller.Objects,
-) *envoyapi.Cluster {
+) (*envoyapi.Cluster, error) {
 	subsets := objects.SubsetsPerCluster(tbnCluster.ClusterKey)
 
 	var subsetConfig *envoyapi.Cluster_LbSubsetConfig
@@ -96,6 +99,11 @@ func (s cds) tbnToEnvoyCluster(
 		}
 	}
 
+	ehcs, err := tbnToEnvoyHealthChecks(tbnCluster.HealthChecks)
+	if err != nil {
+		return nil, err
+	}
+
 	return &envoyapi.Cluster{
 		Name: tbnCluster.Name,
 		Type: envoyapi.Cluster_EDS,
@@ -109,7 +117,8 @@ func (s cds) tbnToEnvoyCluster(
 		LbSubsetConfig:   subsetConfig,
 		CircuitBreakers:  tbnToEnvoyCircuitBreakers(tbnCluster.CircuitBreakers),
 		OutlierDetection: tbnToEnvoyOutlierDetection(tbnCluster.OutlierDetection),
-	}
+		HealthChecks:     ehcs,
+	}, nil
 }
 
 func tbnToEnvoyCircuitBreakers(tbnCb *tbnapi.CircuitBreakers) *envoycluster.CircuitBreakers {
@@ -186,5 +195,199 @@ func envoyToTbnOutlierDetection(eod *envoycluster.OutlierDetection) *tbnapi.Outl
 		SuccessRateStdevFactor:             uint32PtrToIntPtr(eod.GetSuccessRateStdevFactor()),
 		ConsecutiveGatewayFailure:          uint32PtrToIntPtr(eod.GetConsecutiveGatewayFailure()),
 		EnforcingConsecutiveGatewayFailure: uint32PtrToIntPtr(eod.GetEnforcingConsecutiveGatewayFailure()),
+	}
+}
+
+func tbnToEnvoyHealthChecks(thcs tbnapi.HealthChecks) ([]*envoycore.HealthCheck, error) {
+	if len(thcs) == 0 {
+		return nil, nil
+	}
+
+	ehcs := make([]*envoycore.HealthCheck, len(thcs))
+	for i, thc := range thcs {
+		ehc, err := tbnToEnvoyHealthCheck(thc)
+		if err != nil {
+			return nil, err
+		}
+
+		ehcs[i] = ehc
+	}
+
+	return ehcs, nil
+}
+
+func tbnToEnvoyHealthCheck(thc tbnapi.HealthCheck) (*envoycore.HealthCheck, error) {
+	o := &envoycore.HealthCheck{
+		Timeout:               intToDurationPtr(thc.TimeoutMsec),
+		Interval:              intToDurationPtr(thc.IntervalMsec),
+		IntervalJitter:        intPtrToDurationPtr(thc.IntervalJitterMsec),
+		UnhealthyThreshold:    intToUint32Ptr(thc.UnhealthyThreshold),
+		HealthyThreshold:      intToUint32Ptr(thc.HealthyThreshold),
+		ReuseConnection:       boolPtrToBoolValue(thc.ReuseConnection),
+		NoTrafficInterval:     intPtrToDurationPtr(thc.NoTrafficIntervalMsec),
+		UnhealthyInterval:     intPtrToDurationPtr(thc.UnhealthyIntervalMsec),
+		UnhealthyEdgeInterval: intPtrToDurationPtr(thc.UnhealthyEdgeIntervalMsec),
+		HealthyEdgeInterval:   intPtrToDurationPtr(thc.HealthyEdgeIntervalMsec),
+	}
+
+	switch {
+	case thc.HealthChecker.HTTPHealthCheck != nil:
+		o.HealthChecker = tbnToEnvoyHTTPHealthCheck(thc.HealthChecker.HTTPHealthCheck)
+
+	case thc.HealthChecker.TCPHealthCheck != nil:
+		ethc, err := tbnToEnvoyTCPHealthCheck(thc.HealthChecker.TCPHealthCheck)
+		if err != nil {
+			return nil, err
+		}
+		o.HealthChecker = ethc
+	}
+
+	return o, nil
+}
+
+func tbnToEnvoyHTTPHealthCheck(hhc *tbnapi.HTTPHealthCheck) *envoycore.HealthCheck_HttpHealthCheck_ {
+	var hvo []*envoycore.HeaderValueOption
+	if len(hhc.RequestHeadersToAdd) > 0 {
+		hvo = make([]*envoycore.HeaderValueOption, len(hhc.RequestHeadersToAdd))
+		for i, v := range hhc.RequestHeadersToAdd {
+			hvo[i] = &envoycore.HeaderValueOption{
+				Header: &envoycore.HeaderValue{
+					Key:   v.Key,
+					Value: v.Value,
+				},
+			}
+		}
+	}
+	return &envoycore.HealthCheck_HttpHealthCheck_{
+		HttpHealthCheck: &envoycore.HealthCheck_HttpHealthCheck{
+			Host:                hhc.Host,
+			Path:                hhc.Path,
+			ServiceName:         hhc.ServiceName,
+			RequestHeadersToAdd: hvo,
+		},
+	}
+}
+
+func tbnToEnvoyTCPHealthCheck(
+	tthc *tbnapi.TCPHealthCheck,
+) (*envoycore.HealthCheck_TcpHealthCheck_, error) {
+	if tthc == nil {
+		return nil, nil
+	}
+
+	sendPayload, err := base64StringToPayload(tthc.Send)
+	if err != nil {
+		return nil, err
+	}
+
+	var receivePayloads []*envoycore.HealthCheck_Payload
+	if len(tthc.Receive) > 0 {
+		receivePayloads = make([]*envoycore.HealthCheck_Payload, len(tthc.Receive))
+
+		for i, bStr := range tthc.Receive {
+			p, err := base64StringToPayload(bStr)
+			if err != nil {
+				return nil, err
+			}
+			receivePayloads[i] = p
+		}
+	}
+
+	return &envoycore.HealthCheck_TcpHealthCheck_{
+		TcpHealthCheck: &envoycore.HealthCheck_TcpHealthCheck{
+			Send:    sendPayload,
+			Receive: receivePayloads,
+		},
+	}, nil
+}
+
+func envoyToTbnHealthChecks(ehcs []*envoycore.HealthCheck) tbnapi.HealthChecks {
+	if len(ehcs) == 0 {
+		return nil
+	}
+
+	thcs := make(tbnapi.HealthChecks, len(ehcs))
+	for i, ehc := range ehcs {
+		thcs[i] = envoyToTbnHealthCheck(ehc)
+	}
+
+	return thcs
+}
+
+func envoyToTbnHealthCheck(ehc *envoycore.HealthCheck) tbnapi.HealthCheck {
+	if ehc == nil {
+		return tbnapi.HealthCheck{}
+	}
+
+	o := tbnapi.HealthCheck{
+		TimeoutMsec:               durationPtrToInt(ehc.Timeout),
+		IntervalMsec:              durationPtrToInt(ehc.Interval),
+		IntervalJitterMsec:        durationPtrToIntPtr(ehc.IntervalJitter),
+		UnhealthyThreshold:        uint32PtrToInt(ehc.UnhealthyThreshold),
+		HealthyThreshold:          uint32PtrToInt(ehc.HealthyThreshold),
+		ReuseConnection:           boolValueToBoolPtr(ehc.ReuseConnection),
+		NoTrafficIntervalMsec:     durationPtrToIntPtr(ehc.NoTrafficInterval),
+		UnhealthyIntervalMsec:     durationPtrToIntPtr(ehc.UnhealthyInterval),
+		UnhealthyEdgeIntervalMsec: durationPtrToIntPtr(ehc.UnhealthyEdgeInterval),
+		HealthyEdgeIntervalMsec:   durationPtrToIntPtr(ehc.HealthyEdgeInterval),
+	}
+
+	if ehhc := ehc.GetHttpHealthCheck(); ehhc != nil {
+		o.HealthChecker.HTTPHealthCheck = envoyToTbnHTTPHealthCheck(ehhc)
+	}
+
+	if ethc := ehc.GetTcpHealthCheck(); ethc != nil {
+		o.HealthChecker.TCPHealthCheck = envoyToTbnTCPHealthCheck(ethc)
+	}
+
+	return o
+}
+
+func envoyToTbnHTTPHealthCheck(ehhc *envoycore.HealthCheck_HttpHealthCheck) *tbnapi.HTTPHealthCheck {
+	if ehhc == nil {
+		return nil
+	}
+
+	var hta tbnapi.Metadata
+	if len(ehhc.GetRequestHeadersToAdd()) > 0 {
+		hta = make(tbnapi.Metadata, len(ehhc.GetRequestHeadersToAdd()))
+		for i, hvo := range ehhc.GetRequestHeadersToAdd() {
+			if h := hvo.GetHeader(); h != nil {
+				hta[i] = tbnapi.Metadatum{Key: h.GetKey(), Value: h.GetValue()}
+			}
+		}
+	}
+
+	return &tbnapi.HTTPHealthCheck{
+		Path:                ehhc.GetPath(),
+		Host:                ehhc.GetHost(),
+		ServiceName:         ehhc.GetServiceName(),
+		RequestHeadersToAdd: hta,
+	}
+}
+
+func envoyToTbnTCPHealthCheck(ethc *envoycore.HealthCheck_TcpHealthCheck) *tbnapi.TCPHealthCheck {
+	if ethc == nil {
+		return nil
+	}
+
+	var sendStr string
+	if shp := ethc.GetSend(); len(shp.GetBinary()) > 0 {
+		sendStr = bytesToBase64String(shp.GetBinary())
+	}
+
+	var receiveStrs []string
+	if len(ethc.GetReceive()) > 0 {
+		receiveStrs = make([]string, len(ethc.GetReceive()))
+		for i, p := range ethc.GetReceive() {
+			if len(p.GetBinary()) > 0 {
+				receiveStrs[i] = bytesToBase64String(p.GetBinary())
+			}
+		}
+	}
+
+	return &tbnapi.TCPHealthCheck{
+		Send:    sendStr,
+		Receive: receiveStrs,
 	}
 }

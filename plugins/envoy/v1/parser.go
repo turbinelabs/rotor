@@ -24,64 +24,8 @@ import (
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/codec"
 	"github.com/turbinelabs/nonstdlib/log/console"
-	"github.com/turbinelabs/nonstdlib/strings"
 	"github.com/turbinelabs/rotor/xds/collector"
 )
-
-type bootstrapConfig struct {
-	ClusterManager clusterManager `json:"cluster_manager"`
-}
-
-type clusterManager struct {
-	Clusters []cluster `json:"clusters"`
-	Sds      sds       `json:"sds"`
-}
-
-type cluster struct {
-	Name             string            `json:"name"`
-	Type             string            `json:"type"`
-	ServiceName      string            `json:"service_name"`
-	Hosts            []host            `json:"hosts"`
-	CircuitBreakers  *circuitBreakers  `json:"circuit_breakers"`
-	OutlierDetection *outlierDetection `json:"outlier_detection"`
-}
-
-type host struct {
-	URL string `json:"url"`
-}
-
-type circuitBreakers struct {
-	Default *perPriorityCircuitBreakers `json:"default"`
-}
-
-type perPriorityCircuitBreakers struct {
-	MaxConnections     *int `json:"max_connections"`
-	MaxPendingRequests *int `json:"max_pending_requests"`
-	MaxRequests        *int `json:"max_requests"`
-	MaxRetries         *int `json:"max_retries"`
-}
-
-type outlierDetection struct {
-	Consecutive5xx                     *int `json:"consecutive_5xx"`
-	ConsecutiveGatewayFailure          *int `json:"consecutive_gateway_failure"`
-	IntervalMsec                       *int `json:"interval_ms"`
-	BaseEjectionTimeMsec               *int `json:"base_ejection_time_ms"`
-	MaxEjectionPercent                 *int `json:"max_ejection_percent"`
-	EnforcingConsecutive5xx            *int `json:"enforcing_consecutive_5xx"`
-	EnforcingConsecutiveGatewayFailure *int `json:"enforcing_consecutive_gateway_failure"`
-	EnforcingSuccessRate               *int `json:"enforcing_success_rate"`
-	SuccessRateMinimumHosts            *int `json:"success_rate_minimum_hosts"`
-	SuccessRateRequestVolume           *int `json:"success_rate_request_volume"`
-	SuccessRateStdevFactor             *int `json:"success_rate_stdev_factor"`
-}
-
-type sds struct {
-	Cluster cluster `json:"cluster"`
-}
-
-type cdsResp struct {
-	Clusters []cluster `json:"clusters"`
-}
 
 func defaultResolverFactory() resolverFactory {
 	return newResolverFactory(http.DefaultClient.Get, collector.RandomInstanceSelector)
@@ -172,12 +116,19 @@ func (p *parser) parse(r io.Reader) ([]api.Cluster, error) {
 			}
 		}
 
+		hc, err := mkHealthChecks(c.HealthCheck)
+		if err != nil {
+			console.Error().Printf("Skipping health checks: %v", err)
+		}
+
 		cluster := api.Cluster{
 			Name:             c.Name,
 			Instances:        instances,
 			CircuitBreakers:  mkCircuitBreakers(c.CircuitBreakers),
 			OutlierDetection: mkOutlierDetection(c.OutlierDetection),
+			HealthChecks:     hc,
 		}
+
 		clusters[cluster.Name] = cluster
 	}
 
@@ -188,57 +139,4 @@ func (p *parser) parse(r io.Reader) ([]api.Cluster, error) {
 		}
 	}
 	return result, nil
-}
-
-func mkInstance(envoyHostPort string) (api.Instance, error) {
-	protocol, hostAndPort := strings.Split2(envoyHostPort, "://")
-
-	switch protocol {
-	case "udp":
-		return api.Instance{}, fmt.Errorf("UDP not supported: %s", envoyHostPort)
-
-	case "tcp":
-		host, port, err := strings.SplitHostPort(hostAndPort)
-		if err != nil {
-			return api.Instance{}, fmt.Errorf("Error parsing %s: %s", envoyHostPort, err)
-		}
-
-		return api.Instance{Host: host, Port: port}, nil
-
-	default:
-		return api.Instance{}, fmt.Errorf("Unrecognized protocol: %s", envoyHostPort)
-	}
-}
-
-func mkCircuitBreakers(v1Cbs *circuitBreakers) *api.CircuitBreakers {
-	if v1Cbs == nil || v1Cbs.Default == nil {
-		return nil
-	}
-
-	return &api.CircuitBreakers{
-		MaxConnections:     v1Cbs.Default.MaxConnections,
-		MaxPendingRequests: v1Cbs.Default.MaxPendingRequests,
-		MaxRetries:         v1Cbs.Default.MaxRetries,
-		MaxRequests:        v1Cbs.Default.MaxRequests,
-	}
-}
-
-func mkOutlierDetection(od *outlierDetection) *api.OutlierDetection {
-	if od == nil {
-		return nil
-	}
-
-	return &api.OutlierDetection{
-		IntervalMsec:                       od.IntervalMsec,
-		BaseEjectionTimeMsec:               od.BaseEjectionTimeMsec,
-		MaxEjectionPercent:                 od.MaxEjectionPercent,
-		Consecutive5xx:                     od.Consecutive5xx,
-		EnforcingConsecutive5xx:            od.EnforcingConsecutive5xx,
-		EnforcingSuccessRate:               od.EnforcingSuccessRate,
-		SuccessRateMinimumHosts:            od.SuccessRateMinimumHosts,
-		SuccessRateRequestVolume:           od.SuccessRateRequestVolume,
-		SuccessRateStdevFactor:             od.SuccessRateStdevFactor,
-		ConsecutiveGatewayFailure:          od.ConsecutiveGatewayFailure,
-		EnforcingConsecutiveGatewayFailure: od.EnforcingConsecutiveGatewayFailure,
-	}
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package adapter
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -113,7 +114,10 @@ func TestEnvoyToTbnRoundTrip(t *testing.T) {
 	for idx := range tbnCs {
 		got := tbnCs[idx]
 		want := objects.Clusters[idx]
-		assert.True(t, got.Equals(want))
+		if !assert.True(t, got.Equals(want)) {
+			fmt.Printf("got:  %#v\n", got)
+			fmt.Printf("want: %#v\n", want)
+		}
 	}
 }
 

@@ -60,6 +60,17 @@ func TestEmptyClusters(t *testing.T) {
 	assert.Equal(t, len(resources.Items), 0)
 }
 
+func TestClusterResourceAdapterReturnsUnderlyingErrors(t *testing.T) {
+	objects := poller.MkFixtureObjects()
+	objects.Clusters[2].HealthChecks[0].HealthChecker.TCPHealthCheck.Send = "💣"
+	s := cds{"/etc/tls/ca.pem"}
+
+	resources, err := s.resourceAdapter(objects)
+
+	assert.DeepEqual(t, resources, cache.Resources{})
+	assert.NonNil(t, err)
+}
+
 func TestManyClusters(t *testing.T) {
 	objects := poller.MkFixtureObjects()
 	s := cds{"/etc/tls/ca.pem"}
@@ -129,6 +140,31 @@ func TestManyClusters(t *testing.T) {
 				EnforcingConsecutiveGatewayFailure: &types.UInt32Value{Value: 0},
 				EnforcingSuccessRate:               &types.UInt32Value{Value: 0},
 			},
+			HealthChecks: []*envoycore.HealthCheck{
+				{
+					Timeout:            &types.Duration{Nanos: 100000000},
+					Interval:           &types.Duration{Seconds: 10},
+					IntervalJitter:     &types.Duration{Nanos: 300000000},
+					UnhealthyThreshold: &types.UInt32Value{Value: uint32(10)},
+					HealthyThreshold:   &types.UInt32Value{Value: uint32(5)},
+					NoTrafficInterval:  &types.Duration{Seconds: 15},
+					UnhealthyInterval:  &types.Duration{Seconds: 30},
+					HealthChecker: &envoycore.HealthCheck_HttpHealthCheck_{
+						HttpHealthCheck: &envoycore.HealthCheck_HttpHealthCheck{
+							Host: "checker.com",
+							Path: "/hc",
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   "hc-req",
+										Value: "true",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			Name: "baz",
@@ -187,6 +223,40 @@ func TestManyClusters(t *testing.T) {
 				EnforcingConsecutive_5Xx:           &types.UInt32Value{Value: 0},
 				EnforcingConsecutiveGatewayFailure: &types.UInt32Value{Value: 0},
 				EnforcingSuccessRate:               &types.UInt32Value{Value: 100},
+			},
+			HealthChecks: []*envoycore.HealthCheck{
+				{
+					Timeout:            &types.Duration{Nanos: 100000000},
+					Interval:           &types.Duration{Seconds: 15},
+					IntervalJitter:     &types.Duration{Nanos: 300000000},
+					UnhealthyThreshold: &types.UInt32Value{Value: uint32(10)},
+					HealthyThreshold:   &types.UInt32Value{Value: uint32(5)},
+					NoTrafficInterval:  &types.Duration{Seconds: 15},
+					UnhealthyInterval:  &types.Duration{Seconds: 30},
+					HealthChecker: &envoycore.HealthCheck_TcpHealthCheck_{
+						TcpHealthCheck: &envoycore.HealthCheck_TcpHealthCheck{
+							Send: &envoycore.HealthCheck_Payload{
+								Payload: &envoycore.HealthCheck_Payload_Binary{
+									Binary: []byte{
+										0x68,
+										0x65,
+										0x61,
+										0x6c,
+										0x74,
+										0x68,
+										0x20,
+										0x63,
+										0x68,
+										0x65,
+										0x63,
+										0x6b,
+										0xa,
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -260,4 +330,131 @@ func TestEnvoyToTbnCircuitBreakers(t *testing.T) {
 	res := envoyToTbnCircuitBreakers(input)
 	assert.NonNil(t, res)
 	assert.True(t, tbnapi.CircuitBreakersPtrEquals(res, expected))
+}
+
+func TestTbnToEnvoyHealthChecksNilInput(t *testing.T) {
+	h, e := tbnToEnvoyHealthChecks(nil)
+	assert.Nil(t, h)
+	assert.Nil(t, e)
+}
+
+func TestTbnToEnvoyHealthChecksReturnsErrors(t *testing.T) {
+	ehcs, err := tbnToEnvoyHealthChecks(tbnapi.HealthChecks{
+		{
+			TimeoutMsec:               100,
+			IntervalMsec:              30000,
+			IntervalJitterMsec:        ptr.Int(1000),
+			UnhealthyThreshold:        20,
+			HealthyThreshold:          10,
+			UnhealthyEdgeIntervalMsec: ptr.Int(1000),
+			HealthyEdgeIntervalMsec:   ptr.Int(2000),
+			HealthChecker: tbnapi.HealthChecker{
+				TCPHealthCheck: &tbnapi.TCPHealthCheck{
+					Send: "👌🏽",
+				},
+			},
+		},
+	})
+
+	assert.NonNil(t, err)
+	assert.Nil(t, ehcs)
+}
+
+func TestTbnToEnvoyHealthChecksConvertsSuccessfully(t *testing.T) {
+	ehcs, err := tbnToEnvoyHealthChecks(tbnapi.HealthChecks{
+		{
+			TimeoutMsec:           100,
+			IntervalMsec:          10000,
+			IntervalJitterMsec:    ptr.Int(300),
+			UnhealthyThreshold:    10,
+			HealthyThreshold:      5,
+			NoTrafficIntervalMsec: ptr.Int(15000),
+			UnhealthyIntervalMsec: ptr.Int(30000),
+			HealthChecker: tbnapi.HealthChecker{
+				HTTPHealthCheck: &tbnapi.HTTPHealthCheck{
+					Host: "checker.com",
+					Path: "/hc",
+					RequestHeadersToAdd: tbnapi.Metadata{
+						{
+							Key:   "hc-req",
+							Value: "true",
+						},
+					},
+				},
+			},
+		},
+		{
+			TimeoutMsec:               100,
+			IntervalMsec:              30000,
+			IntervalJitterMsec:        ptr.Int(1000),
+			UnhealthyThreshold:        20,
+			HealthyThreshold:          10,
+			UnhealthyEdgeIntervalMsec: ptr.Int(1000),
+			HealthyEdgeIntervalMsec:   ptr.Int(2000),
+			HealthChecker: tbnapi.HealthChecker{
+				TCPHealthCheck: &tbnapi.TCPHealthCheck{
+					Send: "aGVhbHRoIGNoZWNrCg==",
+				},
+			},
+		},
+	})
+
+	assert.Nil(t, err)
+	assert.DeepEqual(t, ehcs, []*envoycore.HealthCheck{
+		{
+			Timeout:            &types.Duration{Nanos: 100000000},
+			Interval:           &types.Duration{Seconds: 10},
+			IntervalJitter:     &types.Duration{Nanos: 300000000},
+			UnhealthyThreshold: &types.UInt32Value{Value: uint32(10)},
+			HealthyThreshold:   &types.UInt32Value{Value: uint32(5)},
+			NoTrafficInterval:  &types.Duration{Seconds: 15},
+			UnhealthyInterval:  &types.Duration{Seconds: 30},
+			HealthChecker: &envoycore.HealthCheck_HttpHealthCheck_{
+				HttpHealthCheck: &envoycore.HealthCheck_HttpHealthCheck{
+					Host: "checker.com",
+					Path: "/hc",
+					RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+						{
+							Header: &envoycore.HeaderValue{
+								Key:   "hc-req",
+								Value: "true",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Timeout:               &types.Duration{Nanos: 100000000},
+			Interval:              &types.Duration{Seconds: 30},
+			IntervalJitter:        &types.Duration{Seconds: 1},
+			UnhealthyThreshold:    &types.UInt32Value{Value: uint32(20)},
+			HealthyThreshold:      &types.UInt32Value{Value: uint32(10)},
+			UnhealthyEdgeInterval: &types.Duration{Seconds: 1},
+			HealthyEdgeInterval:   &types.Duration{Seconds: 2},
+			HealthChecker: &envoycore.HealthCheck_TcpHealthCheck_{
+				TcpHealthCheck: &envoycore.HealthCheck_TcpHealthCheck{
+					Send: &envoycore.HealthCheck_Payload{
+						Payload: &envoycore.HealthCheck_Payload_Binary{
+							Binary: []byte{
+								0x68,
+								0x65,
+								0x61,
+								0x6c,
+								0x74,
+								0x68,
+								0x20,
+								0x63,
+								0x68,
+								0x65,
+								0x63,
+								0x6b,
+								0xa,
+							},
+						},
+					},
+				},
+			},
+		},
+	})
 }
