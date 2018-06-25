@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	nopDesc    = "Run the collector as only an xDS server and request logging sync. "
+	nopDesc    = "Run the collector as only an xDS server and request logging sink. "
 	nopSummary = nopDesc + `
 Commonly used when running a pool of rotor as standalone xDS servers, or
 when co-locating rotor as an xDS sidecar.`

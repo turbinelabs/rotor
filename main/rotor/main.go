@@ -36,18 +36,18 @@ import (
 
 const desc = `
 Collects cluster instance data and updates the Turbine Labs API. A variety of
-service discovery backends are supported via sub- commands, each with their own
+service discovery backends are supported via sub-commands, each with their own
 configuration options. The file collector can be used as a bridge for
 unsupported backends.
 
-If the --xds.enabled flag is set, rotor will serve Envoy v2 xDS. When
-configured with the --api.key flag, the Turbine Labs API will be used as the
-backing store.
+By default, rotor will serve Envoy v2 xDS unless the --xds.disabled flag is set.
+When configured with the --api.key flag, the Turbine Labs API will be used as
+the backing store.
 
 If no API key is provided, rotor will serve xDS in "standalone" mode
-(regardless of the presence or absence of the --xds.enable flag); it will serve
-a single listener on the configured port, with a virtual host named for each
-collected cluster.
+(setting the --xds.disabled flag in this context will throw an error); it will
+serve a single listener on the configured port, with a virtual host named for
+each collected cluster.
 `
 
 func mkCLI() cli.CLI {
