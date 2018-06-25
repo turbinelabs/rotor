@@ -84,20 +84,24 @@ func (p *parser) parse(r io.Reader) ([]api.Cluster, error) {
 	clusters := map[string]api.Cluster{}
 	for _, c := range envoyClusters {
 		if _, exists := clusters[c.Name]; exists {
-			return nil, fmt.Errorf("duplicate cluster: %s", c.Name)
+			return nil, fmt.Errorf("duplicate cluster: %q", c.Name)
 		}
 
 		instances := api.Instances{}
 		switch {
 		case c.Type == "sds" && resolve == nil:
-			console.Error().Printf("No SDS defined. Skipping cluster %s", c.Name)
+			console.Error().Printf("No SDS defined. Skipping cluster %q", c.Name)
 			continue
 
 		case c.Type == "sds":
 			sdsInstances, errs := resolve(c.ServiceName)
 			if len(errs) > 0 {
 				for _, e := range errs {
-					console.Error().Printf("Error getting SDS instances: %v", e)
+					console.Error().Printf(
+						"Error getting SDS instances for cluster %q: %s",
+						c.Name,
+						e,
+					)
 				}
 
 				continue
@@ -109,7 +113,11 @@ func (p *parser) parse(r io.Reader) ([]api.Cluster, error) {
 			for _, h := range c.Hosts {
 				i, err := mkInstance(h.URL)
 				if err != nil {
-					console.Error().Printf("Invalid cluster host: %s", err)
+					console.Error().Printf(
+						"Invalid host for cluster %q: %s",
+						c.Name,
+						err,
+					)
 				}
 
 				instances = append(instances, i)
@@ -118,7 +126,11 @@ func (p *parser) parse(r io.Reader) ([]api.Cluster, error) {
 
 		hc, err := mkHealthChecks(c.HealthCheck)
 		if err != nil {
-			console.Error().Printf("Skipping health checks: %v", err)
+			console.Error().Printf(
+				"Skipping health checks for cluster %s: %v",
+				c.Name,
+				err,
+			)
 		}
 
 		cluster := api.Cluster{
