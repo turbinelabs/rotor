@@ -103,7 +103,7 @@ depends on your service discovery registry. To see the flags available for your
 SD, run:
 
 ```console
-$ docker run turbinelabs/rotor:0.17.2 rotor <platform> --help
+docker run turbinelabs/rotor:0.17.2 rotor <platform> --help
 ```
 
 where `<platform>` is one of: aws, ecs, consul, file, kubernetes, or marathon.
@@ -114,7 +114,7 @@ Kubernetes requires a number of RBAC objects to be created before running
 Rotor. The easiest way to create all these is via
 [the YAML file](examples/kubernetes-rotor.yaml) in this repo:
 
-```bash
+```console
 kubectl create -f https://github.com/turbinelabs/rotor/blob/master/examples/kubernetes/kubernetes-rotor.yaml
 ```
 
@@ -131,19 +131,19 @@ Rotor will also collect all other labels on the Pod, which can be used for
 routing.
 
 An example of a pod with labels correctly configured is included
-[here](https://github.com/turbinelabs/rotor/blog/master/examples/kubernetes/example-pod.yaml).
-An [example Envoy-simple yaml](https://github.com/turbinelabs/rotor/blog/master/examples/kubernetes/envoy-simple.yaml) is also included.
+[here](https://github.com/turbinelabs/rotor/blob/master/examples/kubernetes/example-pod.yaml).
+An [example Envoy-simple yaml](https://github.com/turbinelabs/rotor/blob/master/examples/kubernetes/envoy-simple.yaml) is also included.
 
 ### Consul
 
 Consul requires the datacenter and the host/port of your Consul server.
 
 ```console
-$ docker run -d \
+docker run -d \
   -e "ROTOR_CMD=consul" \
   -e "ROTOR_CONSUL_DC=<your datacenter>" \
   -e "ROTOR_CONSUL_HOSTPORT=<consul ip address>:8500" \
-turbinelabs/rotor:0.17.2
+  turbinelabs/rotor:0.17.2
 ```
 
 To mark a `Service` for Rotor, add a tag called `tbn-cluster`. See
@@ -154,14 +154,14 @@ To mark a `Service` for Rotor, add a tag called `tbn-cluster`. See
 Rotor can collect labels from the AWS API on EC2 instances.
 
 ```console
-$ docker run -d \
--e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
--e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
--e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
--e 'ROTOR_AWS_VPC_ID=<your vpc id>' \
--e 'ROTOR_CMD=aws' \
--p 50000:50000 \
-turbinelabs/rotor:0.17.2
+docker run -d \
+  -e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
+  -e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
+  -e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
+  -e 'ROTOR_AWS_VPC_ID=<your vpc id>' \
+  -e 'ROTOR_CMD=aws' \
+  -p 50000:50000 \
+  turbinelabs/rotor:0.17.2
 ```
 
 You need to tag instances with the service name and port it exposes
@@ -170,7 +170,7 @@ Instances that serve more than one port can be tagged multiple times.
 For example, to expose two services from a single instance on ports
 8080 and 8081, you can tag the instance by running:
 
-```
+```console
 aws ec2 create-tags \
   --resources <your instance id> \
   --tags \
@@ -182,14 +182,14 @@ aws ec2 create-tags \
 
 ECS integration uses the AWS API, similar to EC2.
 
-```console
-$ docker run -d \
--e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
--e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
--e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
--e 'ROTOR_CMD=ecs' \
--p 50000:50000 \
-turbinelabs/rotor:0.17.2
+``aconsole`
+docker run -d \
+  -e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
+  -e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
+  -e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
+  -e 'ROTOR_CMD=ecs' \
+  -p 50000:50000 \
+  turbinelabs/rotor:0.17.2
 ```
 
 You can run this inside or outside of ECS itself, as long as your
@@ -234,7 +234,7 @@ Rotor runs as an app inside DC/OS. Save this as `rotor.json`:
 
 Deploy the app with:
 
-```bash
+```console
 dcos marathon app add rotor.json
 ```
 
@@ -249,11 +249,12 @@ specify the format of the file, use the `--format` flag (or the
 and "yaml", and the default value is "json".
 
 ```console
-$ docker run -d \
--e 'ROTOR_CMD=file' \
--e 'ROTOR_FILE_FILENAME=/path/to/file/in/container' \
--p 50000:50000 \
-turbinelabs/rotor:0.17.2
+docker run -d \
+  -e 'ROTOR_CMD=file' \
+  -e 'ROTOR_FORMAT=yaml' \
+  -e 'ROTOR_FILE_FILENAME=/path/to/file/in/container' \
+  -p 50000:50000 \
+  turbinelabs/rotor:0.17.2
 ```
 
 The format defines clusters and the associated instances:
@@ -281,12 +282,12 @@ or you can use [envoy-simple](https://github.com/turbinelabs/envoy-simple),
 a minimal Envoy container that can configured via environment variables.
 
 ```console
-$ docker run -d \
--e 'ENVOY_XDS_HOST=127.0.0.1' \
--e 'ENVOY_XDS_PORT=50000' \
--p 9999:9999 \
--p 80:80 \
- turbinelabs/envoy-simple:0.17.2
+docker run -d \
+  -e 'ENVOY_XDS_HOST=127.0.0.1' \
+  -e 'ENVOY_XDS_PORT=50000' \
+  -p 9999:9999 \
+  -p 80:80 \
+  turbinelabs/envoy-simple:0.17.2
 ```
 
 You may have to modify the host and port, depending on where you have Rotor
@@ -305,7 +306,7 @@ Rotors, fork Rotor and add your own config, or see
 You can verify that Rotor and Envoy are working correctly together by curling
 the admin interface to Envoy to see the routes that have been set up:
 
-```bash
+```console
 curl localhost:9999/config_dump
 ```
 
@@ -327,6 +328,22 @@ flags can be similarly passed as environment variables, prefixed with
 becomes `ROTOR_KUBERNETES_SOME_FLAG`.
 
 **Note** Command-line flags take precedence over environment variables.
+
+## Configuring Leaderboard Logging
+
+Rotor can be configured to periodically log a leaderboard of non-2xx requests
+to `stdout`. This functionality is controlled by selecting the number of
+responses to track (`--xds.grpc-log-top`) and the aggregation period
+(`--xds.grpc-log-top-interval`). These are global flags and, if being passed
+on the command line, should come before platform configuration. As with any
+flag they may also be specified via environment variable.
+
+When viewing Rotor logs the request leaderboard is recorded in the following
+format:
+
+```bash
+[info] <timestamp> ALS: <number of requests>: <HTTP response code> <request path>
+```
 
 ## Local Installation / Development
 
