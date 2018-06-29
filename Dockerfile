@@ -17,9 +17,9 @@ ADD . $GOPATH/src/github.com/turbinelabs/rotor
 # Get go deps
 RUN go get github.com/turbinelabs/rotor/...
 
-# Install binary
+# Install binaries
 RUN go install github.com/turbinelabs/rotor/...
-RUN mv $GOPATH/bin/rotor /usr/local/bin/rotor
+RUN mv $GOPATH/bin/rotor* /usr/local/bin
 
 # cleanup go
 RUN rm -rf /usr/local/go

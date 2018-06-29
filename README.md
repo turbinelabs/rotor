@@ -182,7 +182,7 @@ aws ec2 create-tags \
 
 ECS integration uses the AWS API, similar to EC2.
 
-``aconsole`
+```console
 docker run -d \
   -e 'ROTOR_AWS_AWS_ACCESS_KEY_ID=<your aws access key>' \
   -e 'ROTOR_AWS_AWS_REGION=<your aws region>' \
@@ -191,7 +191,6 @@ docker run -d \
   -p 50000:50000 \
   turbinelabs/rotor:0.17.2
 ```
-
 You can run this inside or outside of ECS itself, as long as your
 Envoy instances have access to the container on port 50000.
 
@@ -333,17 +332,47 @@ becomes `ROTOR_KUBERNETES_SOME_FLAG`.
 
 Rotor can be configured to periodically log a leaderboard of non-2xx requests
 to `stdout`. This functionality is controlled by selecting the number of
-responses to track (`--xds.grpc-log-top`) and the aggregation period
-(`--xds.grpc-log-top-interval`). These are global flags and, if being passed
+responses to track (`ROTOR_XDS_GRPC_LOG_TOP` or `--xds.grpc-log-top`) and the aggregation period
+(`ROTOR_XDS_GRPC_LOG_TOP_INTERVAL` or `--xds.grpc-log-top-interval`). These are global flags and, if being passed
 on the command line, should come before platform configuration. As with any
 flag they may also be specified via environment variable.
 
 When viewing Rotor logs the request leaderboard is recorded in the following
 format:
 
-```bash
+```shell
 [info] <timestamp> ALS: <number of requests>: <HTTP response code> <request path>
 ```
+
+## Debugging Rotor
+
+There are a few ways to figure out what's going on with Rotor.
+
+### Debug Logging
+
+You can make Rotor's logging more verbose by adding `ROTOR_CONSOLE_LEVEL=debug`
+to the environment, or by setting the `--console.level` flag if running the
+binary by hand.
+
+### Config Dump
+
+You can dump the full configuration that Rotor serves by running
+`rotor-test-client` within the running Rotor docker container:
+
+```console
+docker exec <container id> rotor-test-client
+```
+
+If you've set `ROTOR_XDS_DEFAULT_CLUSTER` or `ROTOR_XDS_DEFAULT_ZONE`, you'll
+need to correspondingly set them as arguments:
+
+```console
+docker exec <container id> rotor-test-client --zone=<zone> --cluster=<cluster>
+```
+
+If you're running the binaries by hand, and you've passed the `--xds.addr` flag
+to rotor, you'll need to pass the same value in the `--addr` flag to
+`rotor-test-client`.
 
 ## Local Installation / Development
 
@@ -380,14 +409,14 @@ open source projects together, or to vendor them with the same git tag.
 
 ### Install
 
-```
+```console
 go get -u github.com/turbinelabs/rotor/...
 go install github.com/turbinelabs/rotor/...
 ```
 
 ### Clone/Test
 
-```
+```console
 mkdir -p $GOPATH/src/turbinelabs
 git clone https://github.com/turbinelabs/rotor.git > $GOPATH/src/turbinelabs/rotor
 go test github.com/turbinelabs/rotor/...

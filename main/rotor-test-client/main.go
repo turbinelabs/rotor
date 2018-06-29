@@ -33,36 +33,46 @@ import (
 	"github.com/turbinelabs/rotor/constants"
 )
 
+var (
+	defaultAddr = "127.0.0.1:50000"
+)
+
+func init() {
+	if addr, ok := os.LookupEnv("ROTOR_XDS_ADDR"); ok {
+		defaultAddr = addr
+	}
+}
+
 func cmd() *command.Cmd {
 	r := &runner{}
 
 	cmd := &command.Cmd{
-		Name:        "test-client",
-		Summary:     "Envoy API test client.",
+		Name:        "rotor-test-client",
+		Summary:     "Test client for the rotor",
 		Usage:       "[OPTIONS]",
-		Description: "Sends empty requests.",
+		Description: "Calls rotor for a given cluster/zone, dumps the response to stdout",
 		Runner:      r,
 	}
 
 	flagset := tbnflag.Wrap(&cmd.Flags)
 
 	flagset.StringVar(
-		&r.port,
-		"port",
-		"localhost:50000",
-		"Specifies which port to connect to.",
+		&r.addr,
+		"addr",
+		defaultAddr,
+		"Specifies which address to connect to.",
 	)
 
 	flagset.StringVar(
-		&r.proxyName,
-		"proxy-name",
+		&r.cluster,
+		"cluster",
 		"",
-		"The name of the zone",
+		"The name of the envoy cluster",
 	)
 
 	flagset.StringVar(
-		&r.zoneName,
-		"zone-name",
+		&r.zone,
+		"zone",
 		"",
 		"The name of the zone",
 	)
@@ -71,22 +81,22 @@ func cmd() *command.Cmd {
 }
 
 type runner struct {
-	port      string
-	proxyName string
-	zoneName  string
+	addr    string
+	cluster string
+	zone    string
 }
 
 func (r *runner) localize(req *envoyapi.DiscoveryRequest) *envoyapi.DiscoveryRequest {
 	req.Node = &envoycore.Node{
-		Cluster:  r.proxyName,
-		Locality: &envoycore.Locality{Zone: r.zoneName},
+		Cluster:  r.cluster,
+		Locality: &envoycore.Locality{Zone: r.zone},
 	}
 	return req
 }
 
 func (r *runner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	marshaler := &jsonpb.Marshaler{Indent: "  "}
-	conn, err := grpc.Dial(r.port, grpc.WithInsecure())
+	conn, err := grpc.Dial(r.addr, grpc.WithInsecure())
 	if err != nil {
 		return cmd.Error(err)
 	}

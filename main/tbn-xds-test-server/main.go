@@ -30,7 +30,7 @@ import (
 func cmd() *command.Cmd {
 	r := &runner{}
 	c := &command.Cmd{
-		Name:        "envoy-api-server",
+		Name:        "tbn-xds-test-server",
 		Summary:     "Envoy API test server",
 		Usage:       "[OPTIONS]",
 		Description: "Serves fixture responses.",
