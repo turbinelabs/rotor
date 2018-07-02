@@ -58,7 +58,7 @@ func TestEnvoyToTbnRoundTrip(t *testing.T) {
 	}
 
 	clusterAdapter := newClusterAdapter("")
-	envoyResources, err := clusterAdapter(objects)
+	envoyResources, err := clusterAdapter.adapt(objects)
 	assert.NonNil(t, envoyResources.Items)
 	assert.Nil(t, err)
 
@@ -122,7 +122,7 @@ func TestEnvoyToTbnRoundTrip(t *testing.T) {
 }
 
 func mkTestEndpointService(objects *poller.Objects) endpointService {
-	resources, _ := newEndpointAdapter(false)(objects)
+	resources, _ := newEndpointAdapter(false).adapt(objects)
 	backingMap := make(map[string]*envoyapi.ClusterLoadAssignment, len(resources.Items))
 	for _, resource := range resources.Items {
 		if cla, ok := resource.(*envoyapi.ClusterLoadAssignment); ok {

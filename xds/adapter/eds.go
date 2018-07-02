@@ -38,8 +38,8 @@ type eds struct {
 	resolveDNS func(string) ([]net.IP, error)
 }
 
-// edsResourceAdapter turns poller.Objects into Endpoint cache.Resources
-func (e eds) edsResourceAdapter(objects *poller.Objects) (cache.Resources, error) {
+// adapt turns poller.Objects into Endpoint cache.Resources
+func (e eds) adapt(objects *poller.Objects) (cache.Resources, error) {
 	resources := make(map[string]cache.Resource, len(objects.Clusters))
 	for _, cluster := range objects.Clusters {
 		la, err := e.tbnClusterToEnvoyLoadAssignment(cluster)

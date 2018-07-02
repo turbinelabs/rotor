@@ -43,10 +43,11 @@ type cachingConsumer interface {
 func newCachingConsumer(
 	cache snapshotCache,
 	registrar poller.Registrar,
-	listenerConfig listenerAdapterConfig,
+	loggingCluster string,
 	caFile string,
 	defaultTimeout time.Duration,
 	resolveDNS bool,
+	provider staticResourcesProvider,
 ) cachingConsumer {
 	return registeringCachingConsumer{
 		cache:     cache,
@@ -55,7 +56,8 @@ func newCachingConsumer(
 			newEndpointAdapter(resolveDNS),
 			newClusterAdapter(caFile),
 			newRouteAdapter(defaultTimeout),
-			newListenerAdapter(listenerConfig),
+			newListenerAdapter(loggingCluster),
+			provider,
 		),
 		getObjects: func(svc service.All, proxy api.Proxy) (*poller.Objects, error) {
 			return poller.NewRemote(svc).Objects(proxy.ProxyKey)

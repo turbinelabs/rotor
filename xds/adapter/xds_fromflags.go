@@ -35,6 +35,8 @@ const (
 type XDSFromFlags interface {
 	// Make creates an XDS from the given poller.Registrar and command line flags.
 	Make(registrar poller.Registrar) (XDS, error)
+	// Validate verifies that all flags are correctly specified
+	Validate() error
 }
 
 // NewXDSFromFlags installs a FromFlags in the given FlagSet
@@ -43,7 +45,8 @@ func NewXDSFromFlags(
 	statsFromFlags stats.FromFlags,
 ) XDSFromFlags {
 	ff := &xdsFromFlags{
-		statsFromFlags: statsFromFlags,
+		statsFromFlags:     statsFromFlags,
+		resourcesFromFlags: newResourcesFromFlags(flags.Scope("static-resources", "static resources")),
 	}
 
 	flags.HostPortVar(
@@ -102,10 +105,16 @@ type xdsFromFlags struct {
 	statsFromFlags     stats.FromFlags
 	defaultTimeout     time.Duration
 	resolveDNS         bool
+	resourcesFromFlags resourcesFromFlags
 }
 
 func (ff *xdsFromFlags) Make(registrar poller.Registrar) (XDS, error) {
 	stats, err := ff.statsFromFlags.Make()
+	if err != nil {
+		return nil, err
+	}
+
+	provider, err := ff.resourcesFromFlags.Make()
 	if err != nil {
 		return nil, err
 	}
@@ -118,5 +127,10 @@ func (ff *xdsFromFlags) Make(registrar poller.Registrar) (XDS, error) {
 		ff.resolveDNS,
 		stats,
 		WithTopResponseLog(ff.grpcLogTopN, ff.grpcLogTopInterval),
+		withStaticResources(provider),
 	)
+}
+
+func (ff *xdsFromFlags) Validate() error {
+	return ff.resourcesFromFlags.Validate()
 }

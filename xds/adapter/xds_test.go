@@ -50,6 +50,7 @@ func TestNewXDS(t *testing.T) {
 		false,
 		mockStats,
 		WithTopResponseLog(-1, time.Second),
+		withStaticResources(&fixedStaticResourcesProvider{}),
 	)
 	assert.NonNil(t, x)
 	assert.Nil(t, err)

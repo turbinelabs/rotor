@@ -95,8 +95,8 @@ func (b routeByPrefixReverse) Less(i, j int) bool {
 	return b[i].Route.Path > b[j].Route.Path
 }
 
-// resourceAdapter turns poller.Objects into Route cache.Resources
-func (s rds) resourceAdapter(objects *poller.Objects) (cache.Resources, error) {
+// adapt turns poller.Objects into Route cache.Resources
+func (s rds) adapt(objects *poller.Objects) (cache.Resources, error) {
 	rcs, err := s.getResourceConfigs(objects)
 	if err != nil {
 		return cache.Resources{}, err

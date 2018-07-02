@@ -44,3 +44,15 @@ func (m *MockXDSFromFlags) Make(registrar poller.Registrar) (XDS, error) {
 func (mr *MockXDSFromFlagsMockRecorder) Make(registrar interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Make", reflect.TypeOf((*MockXDSFromFlags)(nil).Make), registrar)
 }
+
+// Validate mocks base method
+func (m *MockXDSFromFlags) Validate() error {
+	ret := m.ctrl.Call(m, "Validate")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Validate indicates an expected call of Validate
+func (mr *MockXDSFromFlagsMockRecorder) Validate() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Validate", reflect.TypeOf((*MockXDSFromFlags)(nil).Validate))
+}

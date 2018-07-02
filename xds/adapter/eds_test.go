@@ -54,7 +54,7 @@ func TestEmptyRequestNoClusterLoadAssignments(t *testing.T) {
 	objects := poller.MkFixtureObjects()
 	objects.Clusters = nil
 
-	resources, err := eds{}.edsResourceAdapter(objects)
+	resources, err := eds{}.adapt(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)
@@ -71,7 +71,7 @@ func TestFullRequestFullClusterLoadAssignments(t *testing.T) {
 		return []net.IP{net.ParseIP(host)}, nil
 	}
 
-	resources, err := eds{resolveDNS}.edsResourceAdapter(objects)
+	resources, err := eds{resolveDNS}.adapt(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)

@@ -26,6 +26,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 
 	tbnapi "github.com/turbinelabs/api"
+	"github.com/turbinelabs/nonstdlib/log/console"
 	"github.com/turbinelabs/rotor/xds/poller"
 )
 
@@ -34,11 +35,12 @@ const (
 )
 
 type cds struct {
-	caFile string
+	caFile   string
+	template *envoyapi.Cluster
 }
 
-// resourceAdapter turns poller.Objects into Cluster cache.Resources
-func (s cds) resourceAdapter(objects *poller.Objects) (cache.Resources, error) {
+// adapt turns poller.Objects into Cluster cache.Resources
+func (s cds) adapt(objects *poller.Objects) (cache.Resources, error) {
 	resources := make(map[string]cache.Resource, len(objects.Clusters))
 	for _, cluster := range objects.Clusters {
 		envoyCluster, err := s.tbnToEnvoyCluster(cluster, objects)
@@ -50,10 +52,34 @@ func (s cds) resourceAdapter(objects *poller.Objects) (cache.Resources, error) {
 	return cache.Resources{Version: objects.TerribleHash(), Items: resources}, nil
 }
 
+func (s cds) withTemplate(l *envoyapi.Cluster) clusterAdapter {
+	if l != nil {
+		console.Debug().Println("using cluster template")
+	}
+	return cds{
+		caFile:   s.caFile,
+		template: l,
+	}
+}
+
 func (s cds) tbnToEnvoyCluster(
 	tbnCluster tbnapi.Cluster,
 	objects *poller.Objects,
 ) (*envoyapi.Cluster, error) {
+	if s.template != nil {
+		// force copy
+		template := *s.template
+		c := &template
+		c.Name = tbnCluster.Name
+		if c.GetEdsClusterConfig() != nil {
+			// force copy
+			config := *c.EdsClusterConfig
+			c.EdsClusterConfig = &config
+			c.EdsClusterConfig.ServiceName = tbnCluster.Name
+		}
+		return c, nil
+	}
+
 	subsets := objects.SubsetsPerCluster(tbnCluster.ClusterKey)
 
 	var subsetConfig *envoyapi.Cluster_LbSubsetConfig

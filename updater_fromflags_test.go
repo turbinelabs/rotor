@@ -25,6 +25,7 @@ import (
 	"github.com/turbinelabs/api"
 	apiflags "github.com/turbinelabs/api/client/flags"
 	"github.com/turbinelabs/api/service"
+	tbnflag "github.com/turbinelabs/nonstdlib/flag"
 	"github.com/turbinelabs/rotor/constants"
 	"github.com/turbinelabs/rotor/updater"
 	"github.com/turbinelabs/rotor/xds/adapter"
@@ -32,6 +33,40 @@ import (
 	"github.com/turbinelabs/stats"
 	"github.com/turbinelabs/test/assert"
 )
+
+func TestNewUpdaterFromFlags(t *testing.T) {
+	flagset := tbnflag.NewTestFlagSet()
+
+	ff := NewUpdaterFromFlags(flagset)
+	ffImpl := ff.(*updaterFromFlags)
+
+	assert.False(t, ffImpl.disableXDS)
+	assert.Equal(t, ffImpl.standalonePort, 80)
+	assert.Equal(t, ffImpl.standaloneProxyName, "default-cluster")
+	assert.Equal(t, ffImpl.standaloneZoneName, "default-zone")
+
+	flagset.Parse([]string{
+		"-xds.disabled",
+		"-xds.standalone-port", "1234",
+		"-xds.standalone-cluster", "my-cluster",
+		"-xds.standalone-zone", "my-zone",
+	})
+
+	assert.True(t, ffImpl.disableXDS)
+	assert.Equal(t, ffImpl.standalonePort, 1234)
+	assert.Equal(t, ffImpl.standaloneProxyName, "my-cluster")
+	assert.Equal(t, ffImpl.standaloneZoneName, "my-zone")
+
+	assert.NonNil(t, ffImpl.apiConfigFromFlags)
+	assert.NonNil(t, ffImpl.apiClientFromFlags)
+	assert.NonNil(t, ffImpl.zoneFromFlags)
+	assert.NonNil(t, ffImpl.updaterFromFlags)
+	assert.NonNil(t, ffImpl.xdsFromFlags)
+	assert.NonNil(t, ffImpl.pollerFromFlags)
+	assert.NonNil(t, ffImpl.statsFromFlags)
+	assert.NonNil(t, ffImpl.startXDS)
+	assert.NonNil(t, ffImpl.pollLoop)
+}
 
 type uffMocks struct {
 	ff                 updaterFromFlags
@@ -90,6 +125,7 @@ type uffValidateTestCase struct {
 	zoneName                 string
 	updaterValidateErr       error
 	pollerValidateErr        error
+	xdsValidateErr           error
 	apiClientValidateErr     error
 	wantErr                  error
 	exitBeforeZoneName       bool
@@ -122,8 +158,15 @@ func (tc uffValidateTestCase) run(t *testing.T) {
 		return
 	}
 
+	mocks.expect(mocks.pollerFromFlags.EXPECT().Validate().Return(nil))
+
+	if tc.xdsValidateErr != nil {
+		mocks.expect(mocks.xdsFromFlags.EXPECT().Validate().Return(tc.xdsValidateErr))
+		return
+	}
+
 	mocks.expect(
-		mocks.pollerFromFlags.EXPECT().Validate().Return(nil),
+		mocks.xdsFromFlags.EXPECT().Validate().Return(nil),
 		mocks.apiConfigFromFlags.EXPECT().APIKey().Return(tc.apiKey),
 	)
 
@@ -158,6 +201,14 @@ func TestUpdaterFromFlagsValidatePollerErr(t *testing.T) {
 	uffValidateTestCase{
 		pollerValidateErr: err,
 		wantErr:           err,
+	}.run(t)
+}
+
+func TestUpdaterFromFlagsValidateXDSErr(t *testing.T) {
+	err := errors.New("boom")
+	uffValidateTestCase{
+		xdsValidateErr: err,
+		wantErr:        err,
 	}.run(t)
 }
 

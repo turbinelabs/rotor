@@ -186,6 +186,10 @@ func (ff *updaterFromFlags) validate(xdsOnly bool) error {
 		return err
 	}
 
+	if err := ff.xdsFromFlags.Validate(); err != nil {
+		return err
+	}
+
 	if ff.apiConfigFromFlags.APIKey() == "" {
 		if xdsOnly {
 			if ff.disableXDS {

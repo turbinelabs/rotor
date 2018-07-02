@@ -53,7 +53,7 @@ func TestEmptyClusters(t *testing.T) {
 	objects.Clusters = nil
 	s := cds{}
 
-	resources, err := s.resourceAdapter(objects)
+	resources, err := s.adapt(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)
@@ -63,9 +63,9 @@ func TestEmptyClusters(t *testing.T) {
 func TestClusterResourceAdapterReturnsUnderlyingErrors(t *testing.T) {
 	objects := poller.MkFixtureObjects()
 	objects.Clusters[2].HealthChecks[0].HealthChecker.TCPHealthCheck.Send = "💣"
-	s := cds{"/etc/tls/ca.pem"}
+	s := cds{caFile: "/etc/tls/ca.pem"}
 
-	resources, err := s.resourceAdapter(objects)
+	resources, err := s.adapt(objects)
 
 	assert.DeepEqual(t, resources, cache.Resources{})
 	assert.NonNil(t, err)
@@ -73,9 +73,9 @@ func TestClusterResourceAdapterReturnsUnderlyingErrors(t *testing.T) {
 
 func TestManyClusters(t *testing.T) {
 	objects := poller.MkFixtureObjects()
-	s := cds{"/etc/tls/ca.pem"}
+	s := cds{caFile: "/etc/tls/ca.pem"}
 
-	resources, err := s.resourceAdapter(objects)
+	resources, err := s.adapt(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)
@@ -258,6 +258,95 @@ func TestManyClusters(t *testing.T) {
 					},
 				},
 			},
+		},
+	}
+
+	checkClusters(t, resources, expectedEnvoyClusters)
+}
+
+func TestAdaptClustersTemplate(t *testing.T) {
+	objects := poller.MkFixtureObjects()
+	s := cds{}.withTemplate(
+		&envoyapi.Cluster{
+			Name: "ignored",
+			Type: envoyapi.Cluster_EDS,
+			EdsClusterConfig: &envoyapi.Cluster_EdsClusterConfig{
+				EdsConfig: &envoycore.ConfigSource{
+					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+						ApiConfigSource: &envoycore.ApiConfigSource{
+							ApiType:      envoycore.ApiConfigSource_GRPC,
+							ClusterNames: []string{"somewhere"},
+							RefreshDelay: ptr.Duration(time.Second),
+						},
+					},
+				},
+				ServiceName: "ignored",
+			},
+			ConnectTimeout: time.Minute,
+			LbPolicy:       envoyapi.Cluster_RING_HASH,
+		},
+	)
+
+	resources, err := s.adapt(objects)
+
+	assert.Equal(t, resources.Version, objects.TerribleHash())
+	assert.Nil(t, err)
+	assert.NonNil(t, resources.Items)
+
+	expectedEnvoyClusters := []envoyapi.Cluster{
+		{
+			Name: "foo",
+			Type: envoyapi.Cluster_EDS,
+			EdsClusterConfig: &envoyapi.Cluster_EdsClusterConfig{
+				EdsConfig: &envoycore.ConfigSource{
+					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+						ApiConfigSource: &envoycore.ApiConfigSource{
+							ApiType:      envoycore.ApiConfigSource_GRPC,
+							ClusterNames: []string{"somewhere"},
+							RefreshDelay: ptr.Duration(time.Second),
+						},
+					},
+				},
+				ServiceName: "foo",
+			},
+			ConnectTimeout: time.Minute,
+			LbPolicy:       envoyapi.Cluster_RING_HASH,
+		},
+		{
+			Name: "baz",
+			Type: envoyapi.Cluster_EDS,
+			EdsClusterConfig: &envoyapi.Cluster_EdsClusterConfig{
+				EdsConfig: &envoycore.ConfigSource{
+					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+						ApiConfigSource: &envoycore.ApiConfigSource{
+							ApiType:      envoycore.ApiConfigSource_GRPC,
+							ClusterNames: []string{"somewhere"},
+							RefreshDelay: ptr.Duration(time.Second),
+						},
+					},
+				},
+				ServiceName: "baz",
+			},
+			ConnectTimeout: time.Minute,
+			LbPolicy:       envoyapi.Cluster_RING_HASH,
+		},
+		{
+			Name: "bar",
+			Type: envoyapi.Cluster_EDS,
+			EdsClusterConfig: &envoyapi.Cluster_EdsClusterConfig{
+				EdsConfig: &envoycore.ConfigSource{
+					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+						ApiConfigSource: &envoycore.ApiConfigSource{
+							ApiType:      envoycore.ApiConfigSource_GRPC,
+							ClusterNames: []string{"somewhere"},
+							RefreshDelay: ptr.Duration(time.Second),
+						},
+					},
+				},
+				ServiceName: "bar",
+			},
+			ConnectTimeout: time.Minute,
+			LbPolicy:       envoyapi.Cluster_RING_HASH,
 		},
 	}
 

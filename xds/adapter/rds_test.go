@@ -70,7 +70,7 @@ func TestEmptyRoutes(t *testing.T) {
 
 	s := rds{rdsTestDefaultTimeout}
 
-	resources, err := s.resourceAdapter(objects)
+	resources, err := s.adapt(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)
@@ -178,7 +178,7 @@ func TestAllPortsRequest(t *testing.T) {
 
 	s := rds{rdsTestDefaultTimeout}
 
-	resources, err := s.resourceAdapter(objects)
+	resources, err := s.adapt(objects)
 
 	assert.Equal(t, resources.Version, objects.TerribleHash())
 	assert.Nil(t, err)

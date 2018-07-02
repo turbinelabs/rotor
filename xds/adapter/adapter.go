@@ -28,47 +28,109 @@ import (
 	"strings"
 	"time"
 
+	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	"github.com/gogo/protobuf/types"
 
 	tbnapi "github.com/turbinelabs/api"
+	"github.com/turbinelabs/nonstdlib/log/console"
 	"github.com/turbinelabs/nonstdlib/ptr"
 	"github.com/turbinelabs/rotor/xds/poller"
 )
 
-// ResourceAdapter turns poller.Objects into cache.Resources
-type resourceAdapter func(*poller.Objects) (cache.Resources, error)
+//go:generate $TBN_HOME/scripts/mockgen_internal.sh -type resourceAdapter -type listenerAdapter -type clusterAdapter -source $GOFILE -destination mock_$GOFILE -package $GOPACKAGE --write_package_comment=false
 
 // SnapshotAdapter turns poller.Objects into a cache.Snapshot
 type snapshotAdapter func(*poller.Objects) (cache.Snapshot, error)
 
+// ResourceAdapter turns poller.Objects into cache.Resources
+type resourceAdapter interface {
+	adapt(*poller.Objects) (cache.Resources, error)
+}
+
+type listenerAdapter interface {
+	resourceAdapter
+	inject(*envoyapi.Listener) error
+}
+
+type clusterAdapter interface {
+	resourceAdapter
+	withTemplate(*envoyapi.Cluster) clusterAdapter
+}
+
 // NewSnapshotAdapter creates an SnapshotAdapter from the given ResourceAdapters.
 func newSnapshotAdapter(
-	adaptEndpoints resourceAdapter,
-	adaptClusters resourceAdapter,
-	adaptRoutes resourceAdapter,
-	adaptListeners resourceAdapter,
+	eAdapter resourceAdapter,
+	cAdapter clusterAdapter,
+	rAdapter resourceAdapter,
+	lAdapter listenerAdapter,
+	provider staticResourcesProvider,
 ) snapshotAdapter {
 	return func(objs *poller.Objects) (cache.Snapshot, error) {
-		endpoints, err := adaptEndpoints(objs)
+		var staticRes staticResources
+		if provider != nil {
+			staticRes = provider.StaticResources()
+		}
+
+		endpoints, err := eAdapter.adapt(objs)
 		if err != nil {
 			return cache.Snapshot{}, err
 		}
 
-		clusters, err := adaptClusters(objs)
+		clusters, err := cAdapter.withTemplate(staticRes.clusterTemplate).adapt(objs)
 		if err != nil {
 			return cache.Snapshot{}, err
 		}
 
-		routes, err := adaptRoutes(objs)
+		if len(staticRes.clusters) > 0 {
+			if staticRes.conflictBehavior == overwriteBehavior {
+				clusters.Items = map[string]cache.Resource{}
+			}
+			for _, cluster := range staticRes.clusters {
+				clusters.Items[cluster.GetName()] = cluster
+			}
+		}
+		// if there are static clusters or a cluster template, vary the version
+		if len(staticRes.clusters) > 0 || staticRes.clusterTemplate != nil {
+			clusters.Version += staticRes.version
+		}
+
+		routes, err := rAdapter.adapt(objs)
 		if err != nil {
 			return cache.Snapshot{}, err
 		}
 
-		listeners, err := adaptListeners(objs)
+		listeners, err := lAdapter.adapt(objs)
 		if err != nil {
 			return cache.Snapshot{}, err
+		}
+
+		if len(staticRes.listeners) > 0 {
+			lm := newListenerMap(false)
+
+			if staticRes.conflictBehavior == mergeBehavior {
+				for k := range listeners.Items {
+					if l, ok := listeners.Items[k].(*envoyapi.Listener); ok {
+						lm.addListener(l)
+					}
+				}
+			}
+
+			// inject, then add listeners to map
+			for _, l := range staticRes.listeners {
+				err = lAdapter.inject(l)
+				if err != nil {
+					console.Error().Printf(
+						"failed to inject ALS logging into static listener %s: %s", l.Name, err)
+				} else {
+					lm.addListener(l)
+				}
+			}
+
+			listeners.Items = lm.resourceMap()
+			// change the version, since it's different than without static resources
+			listeners.Version += staticRes.version
 		}
 
 		return cache.Snapshot{
@@ -84,42 +146,31 @@ func newSnapshotAdapter(
 // Resources.
 func newEndpointAdapter(resolveDNS bool) resourceAdapter {
 	if resolveDNS {
-		return eds{resolveDNS: net.LookupIP}.edsResourceAdapter
+		return eds{resolveDNS: net.LookupIP}
 	}
-	return eds{}.edsResourceAdapter
-
+	return eds{}
 }
 
 // newClusterAdapter returns a resourceAdapter that produces Cluster Resources.
 // If non-empty, the caFile string specifies a path for the certificate
 // authority, which must be present on the Envoy serving traffic to these
 // Clusters.
-func newClusterAdapter(caFile string) resourceAdapter {
-	return cds{caFile}.resourceAdapter
+func newClusterAdapter(caFile string) clusterAdapter {
+	return cds{caFile: caFile}
 }
 
 // newRouteAdapter returns a resourceAdapter that produces Route Resources. The
 // defaultTimeout specifies the request timeout to be used for each RouteAction
 // if no Route-specific timeout is configured.
 func newRouteAdapter(defaultTimeout time.Duration) resourceAdapter {
-	return rds{defaultTimeout}.resourceAdapter
-}
-
-// listenerAdapterConfig represents the configuration of a listener adapter.
-type listenerAdapterConfig struct {
-	loggingCluster string
+	return rds{defaultTimeout}
 }
 
 // newListenerAdapter returns a resourceAdapter that produces Listener
-// Resources. The config argument specifies either the LogFilePaths or the
-// AccessLogService cluster name to be used when configuring logging for each
-// Listener.
-func newListenerAdapter(config listenerAdapterConfig) resourceAdapter {
-	if config.loggingCluster != "" {
-		return lds{loggingCluster: config.loggingCluster}.resourceAdapter
-	}
-
-	return lds{}.resourceAdapter
+// Resources. The loggingCluster argument specifies the AccessLogService cluster
+// name to be used when configuring logging for each Listener.
+func newListenerAdapter(loggingCluster string) listenerAdapter {
+	return lds{loggingCluster: loggingCluster}
 }
 
 // constants used when handing out configs for other xDS resources,

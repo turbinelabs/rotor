@@ -56,13 +56,19 @@ type XDS interface {
 
 // XDSOption represents a configuration option for XDS.
 type XDSOption struct {
-	mkALSReporterConfig func() alsReporterConfig
+	mkALSReporterConfig     func() alsReporterConfig
+	staticResourcesProvider staticResourcesProvider
 }
 
 func (x *XDSOption) merge(options []XDSOption) {
 	for _, option := range options {
 		if option.mkALSReporterConfig != nil {
 			x.mkALSReporterConfig = option.mkALSReporterConfig
+		}
+		if option.staticResourcesProvider == nil {
+			x.staticResourcesProvider = fixedStaticResourcesProvider{}
+		} else {
+			x.staticResourcesProvider = option.staticResourcesProvider
 		}
 	}
 }
@@ -84,6 +90,13 @@ func WithTopResponseLog(n int, interval time.Duration) XDSOption {
 	}
 }
 
+// withStaticResources adds static resources to the XDS response.
+func withStaticResources(provider staticResourcesProvider) XDSOption {
+	return XDSOption{
+		staticResourcesProvider: provider,
+	}
+}
+
 // NewXDS creates new XDS instances with the given listener address, object source,
 // certificate authority file, and default timeout.
 func NewXDS(
@@ -98,16 +111,17 @@ func NewXDS(
 	xdsOption := XDSOption{}
 	xdsOption.merge(options)
 
-	ldsConfig := listenerAdapterConfig{loggingCluster: xdsClusterName}
 	snapshotCache := newSnapshotCache()
+
 	consumer := newCachingConsumerStats(
 		newCachingConsumer(
 			snapshotCache,
 			registrar,
-			ldsConfig,
+			xdsClusterName,
 			caFile,
 			defaultTimeout,
 			resolveDNS,
+			xdsOption.staticResourcesProvider,
 		),
 		stats,
 	)

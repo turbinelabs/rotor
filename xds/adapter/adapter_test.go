@@ -23,101 +23,316 @@ import (
 	"reflect"
 	"testing"
 
+	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	envoycore "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	"github.com/gogo/protobuf/types"
+	"github.com/golang/mock/gomock"
 
 	tbnapi "github.com/turbinelabs/api"
+	"github.com/turbinelabs/nonstdlib/log/console"
 	"github.com/turbinelabs/nonstdlib/ptr"
 	"github.com/turbinelabs/rotor/xds/poller"
 	"github.com/turbinelabs/test/assert"
 )
 
-func TestSnapshotAdapter(t *testing.T) {
-	mkSuccess := func(kind string) resourceAdapter {
-		return func(objects *poller.Objects) (cache.Resources, error) {
-			return cache.Resources{
-				Version: fmt.Sprintf("%s-%s", kind, objects.TerribleHash()),
-			}, nil
+func mkTestListener(name, host string, port uint32) *envoyapi.Listener {
+	return &envoyapi.Listener{
+		Name: name,
+		Address: envoycore.Address{
+			Address: &envoycore.Address_SocketAddress{
+				SocketAddress: &envoycore.SocketAddress{
+					Protocol: envoycore.TCP,
+					Address:  host,
+					PortSpecifier: &envoycore.SocketAddress_PortValue{
+						PortValue: port,
+					},
+				},
+			},
+		},
+	}
+}
+
+var testCacheSnapshot = cache.Snapshot{
+	Endpoints: cache.Resources{
+		Version: "endpoints-" + poller.FixtureHash,
+		Items: map[string]cache.Resource{
+			"endpoint-1": &envoyapi.ClusterLoadAssignment{
+				ClusterName: "cluster-1",
+			},
+		},
+	},
+	Clusters: cache.Resources{
+		Version: "clusters-" + poller.FixtureHash,
+		Items: map[string]cache.Resource{
+			"cluster-1": &envoyapi.Cluster{
+				Name: "cluster-1",
+			},
+		},
+	},
+	Routes: cache.Resources{
+		Version: "routes-" + poller.FixtureHash,
+		Items: map[string]cache.Resource{
+			"route-1": &envoyapi.RouteConfiguration{
+				Name: "route-1",
+			},
+		},
+	},
+	Listeners: cache.Resources{
+		Version: "listeners-" + poller.FixtureHash,
+		Items: map[string]cache.Resource{
+			"listener-1": mkTestListener("listener-1", "127.0.0.1", 80),
+		},
+	},
+}
+
+type newSnapshotAdapterTestCase struct {
+	endpointAdaptErr  error
+	staticResources   staticResources
+	clusterAdaptErr   error
+	routeAdaptErr     error
+	listenerAdaptErr  error
+	listenerInjectErr error
+	want              cache.Snapshot
+	wantErr           error
+}
+
+func (tc newSnapshotAdapterTestCase) run(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+
+	objs := poller.MkFixtureObjects()
+
+	mockEndpointAdapter := newMockResourceAdapter(ctrl)
+	mockClusterAdapter := newMockClusterAdapter(ctrl)
+	mockResourceAdapter := newMockClusterAdapter(ctrl)
+	mockListenerAdapter := newMockListenerAdapter(ctrl)
+	mockProvider := newMockStaticResourcesProvider(ctrl)
+
+	adapt := newSnapshotAdapter(
+		mockEndpointAdapter,
+		mockClusterAdapter,
+		mockResourceAdapter,
+		mockListenerAdapter,
+		mockProvider,
+	)
+
+	calls := []*gomock.Call{}
+
+	tc.staticResources.version = "static"
+
+	defer func() {
+		gomock.InOrder(calls...)
+
+		got, gotErr := adapt(objs)
+		ctrl.Finish()
+
+		if tc.wantErr == nil {
+			if len(tc.staticResources.clusters) > 0 || tc.staticResources.clusterTemplate != nil {
+				tc.want.Clusters.Version = tc.want.Clusters.Version + "static"
+			}
+
+			if len(tc.staticResources.listeners) > 0 {
+				tc.want.Listeners.Version = tc.want.Listeners.Version + "static"
+			}
+		}
+
+		assert.DeepEqual(t, got, tc.want)
+		assert.DeepEqual(t, gotErr, tc.wantErr)
+
+	}()
+
+	expect := func(cs ...*gomock.Call) {
+		calls = append(calls, cs...)
+	}
+
+	expect(mockProvider.EXPECT().StaticResources().Return(tc.staticResources))
+
+	if tc.endpointAdaptErr != nil {
+		expect(mockEndpointAdapter.EXPECT().adapt(objs).Return(cache.Resources{}, tc.endpointAdaptErr))
+		return
+	}
+
+	expect(
+		mockEndpointAdapter.EXPECT().adapt(objs).Return(tc.want.Endpoints, nil),
+		mockClusterAdapter.EXPECT().withTemplate(tc.staticResources.clusterTemplate).Return(mockClusterAdapter),
+	)
+
+	if tc.clusterAdaptErr != nil {
+		expect(mockClusterAdapter.EXPECT().adapt(objs).Return(cache.Resources{}, tc.clusterAdaptErr))
+		return
+	}
+
+	expect(mockClusterAdapter.EXPECT().adapt(objs).Return(tc.want.Clusters, nil))
+
+	if tc.routeAdaptErr != nil {
+		expect(mockResourceAdapter.EXPECT().adapt(objs).Return(cache.Resources{}, tc.routeAdaptErr))
+		return
+	}
+
+	expect(mockResourceAdapter.EXPECT().adapt(objs).Return(tc.want.Routes, nil))
+
+	if tc.listenerAdaptErr != nil {
+		expect(mockListenerAdapter.EXPECT().adapt(objs).Return(cache.Resources{}, tc.listenerAdaptErr))
+		return
+	}
+
+	expect(mockListenerAdapter.EXPECT().adapt(objs).Return(tc.want.Listeners, nil))
+
+	if len(tc.staticResources.listeners) != 0 {
+		if tc.listenerInjectErr != nil {
+			expect(mockListenerAdapter.EXPECT().inject(tc.staticResources.listeners[0]).Return(tc.listenerInjectErr))
+			return
+		}
+		for i := range tc.staticResources.listeners {
+			expect(mockListenerAdapter.EXPECT().inject(tc.staticResources.listeners[i]).Return(nil))
 		}
 	}
+}
 
-	mkErr := func(kind string) resourceAdapter {
-		return func(objects *poller.Objects) (cache.Resources, error) {
-			return cache.Resources{}, fmt.Errorf("%s-%s", kind, objects.TerribleHash())
-		}
+func TestNewSnapshotAdapterEndpointAdaptErr(t *testing.T) {
+	err := errors.New("boom")
+	newSnapshotAdapterTestCase{
+		endpointAdaptErr: err,
+		wantErr:          err,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterClusterAdaptErr(t *testing.T) {
+	err := errors.New("boom")
+	newSnapshotAdapterTestCase{
+		clusterAdaptErr: err,
+		wantErr:         err,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterRouteAdaptErr(t *testing.T) {
+	err := errors.New("boom")
+	newSnapshotAdapterTestCase{
+		routeAdaptErr: err,
+		wantErr:       err,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterListenerAdaptErr(t *testing.T) {
+	err := errors.New("boom")
+	newSnapshotAdapterTestCase{
+		listenerAdaptErr: err,
+		wantErr:          err,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterSuccess(t *testing.T) {
+	newSnapshotAdapterTestCase{
+		want: testCacheSnapshot,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterClusterTemplate(t *testing.T) {
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			clusterTemplate: &envoyapi.Cluster{
+				Name: "some deal",
+			},
+		},
+		want: testCacheSnapshot,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterStaticClustersMerge(t *testing.T) {
+	want := testCacheSnapshot
+	want.Clusters.Items = map[string]cache.Resource{
+		"cluster-1": &envoyapi.Cluster{
+			Name: "cluster-1",
+		},
+		"cluster-2": &envoyapi.Cluster{
+			Name: "cluster-2",
+		},
 	}
-
-	testErr := func(sa snapshotAdapter, kind string) {
-		want := cache.Snapshot{}
-		got, err := sa(poller.MkFixtureObjects())
-		assert.DeepEqual(t, got, want)
-		assert.Equal(t, err.Error(), fmt.Sprintf("%s-%s", kind, poller.FixtureHash))
-	}
-
-	got, err := newSnapshotAdapter(
-		mkSuccess("endpoints"),
-		mkSuccess("clusters"),
-		mkSuccess("routes"),
-		mkSuccess("listeners"),
-	)(poller.MkFixtureObjects())
-
-	want := cache.Snapshot{
-		Endpoints: cache.Resources{
-			Version: "endpoints-" + poller.FixtureHash,
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			clusters: []*envoyapi.Cluster{
+				{
+					Name: "cluster-2",
+				},
+			},
 		},
-		Clusters: cache.Resources{
-			Version: "clusters-" + poller.FixtureHash,
-		},
-		Routes: cache.Resources{
-			Version: "routes-" + poller.FixtureHash,
-		},
-		Listeners: cache.Resources{
-			Version: "listeners-" + poller.FixtureHash,
+		want: want,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterStaticClustersOverwrite(t *testing.T) {
+	want := testCacheSnapshot
+	want.Clusters.Items = map[string]cache.Resource{
+		"cluster-2": &envoyapi.Cluster{
+			Name: "cluster-2",
 		},
 	}
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			clusters: []*envoyapi.Cluster{
+				{
+					Name: "cluster-2",
+				},
+			},
+			conflictBehavior: overwriteBehavior,
+		},
+		want: want,
+	}.run(t)
+}
 
-	assert.Nil(t, err)
-	assert.DeepEqual(t, got, want)
+func TestNewSnapshotAdapterStaticListenersInjectErr(t *testing.T) {
+	ch, cleanup := console.ConsumeConsoleLogs(10)
+	defer cleanup()
 
-	testErr(
-		newSnapshotAdapter(
-			mkErr("endpoints"),
-			mkSuccess("clusters"),
-			mkSuccess("routes"),
-			mkSuccess("listeners"),
-		),
-		"endpoints",
+	err := errors.New("boom")
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			listeners: []*envoyapi.Listener{
+				mkTestListener("listener-2", "127.0.0.1", 81),
+			},
+		},
+		listenerInjectErr: err,
+		want:              testCacheSnapshot,
+	}.run(t)
+
+	msg := <-ch
+	assert.Equal(
+		t,
+		msg.Message,
+		"[error] failed to inject ALS logging into static listener listener-2: boom\n",
 	)
+}
 
-	testErr(
-		newSnapshotAdapter(
-			mkSuccess("endpoints"),
-			mkErr("clusters"),
-			mkSuccess("routes"),
-			mkSuccess("listeners"),
-		),
-		"clusters",
-	)
+func TestNewSnapshotAdapterStaticListenersMerge(t *testing.T) {
+	want := testCacheSnapshot
+	want.Listeners.Items = map[string]cache.Resource{
+		"listener-1": mkTestListener("listener-1", "127.0.0.1", 80),
+		"listener-2": mkTestListener("listener-2", "127.0.0.1", 81),
+	}
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			listeners: []*envoyapi.Listener{
+				mkTestListener("listener-2", "127.0.0.1", 81),
+			},
+		},
+		want: want,
+	}.run(t)
+}
 
-	testErr(
-		newSnapshotAdapter(
-			mkSuccess("endpoints"),
-			mkSuccess("clusters"),
-			mkErr("routes"),
-			mkSuccess("listeners"),
-		),
-		"routes",
-	)
-
-	testErr(
-		newSnapshotAdapter(
-			mkSuccess("endpoints"),
-			mkSuccess("clusters"),
-			mkSuccess("routes"),
-			mkErr("listeners"),
-		),
-		"listeners",
-	)
+func TestNewSnapshotAdapterStaticListenersOverwrite(t *testing.T) {
+	want := testCacheSnapshot
+	want.Listeners.Items = map[string]cache.Resource{
+		"listener-2": mkTestListener("listener-2", "127.0.0.1", 81),
+	}
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			listeners: []*envoyapi.Listener{
+				mkTestListener("listener-2", "127.0.0.1", 81),
+			},
+			conflictBehavior: overwriteBehavior,
+		},
+		want: want,
+	}.run(t)
 }
 
 // Coverts the given interface{} into a *structpb.Value. The interface

@@ -55,12 +55,16 @@ func TestXDSFromFlagsMake(t *testing.T) {
 	mockStats := stats.NewMockStats(ctrl)
 	mockStatsFromFlags.EXPECT().Make().Return(mockStats, nil)
 
+	mockResourcesFromFlags := newMockResourcesFromFlags(ctrl)
+	mockResourcesFromFlags.EXPECT().Make().Return(nil, nil)
+
 	mockRegistrar := poller.NewMockRegistrar(ctrl)
 
 	ff := xdsFromFlags{
-		addr:           tbnflag.NewHostPort(defaultAddr),
-		statsFromFlags: mockStatsFromFlags,
-		caFile:         "/etc/tls/ca.pem",
+		addr:               tbnflag.NewHostPort(defaultAddr),
+		statsFromFlags:     mockStatsFromFlags,
+		caFile:             "/etc/tls/ca.pem",
+		resourcesFromFlags: mockResourcesFromFlags,
 	}
 
 	x, err := ff.Make(mockRegistrar)
