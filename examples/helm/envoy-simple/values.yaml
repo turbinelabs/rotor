@@ -5,5 +5,5 @@
 replicaCount: 1
 restartPolicy: Never
 
-image: turbinelabs/envoy-simple:0.17.2
+image: turbinelabs/envoy-simple:0.18.0
 imagePullPolicy: Always

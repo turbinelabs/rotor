@@ -1,4 +1,4 @@
-FROM turbinelabs/envoy-simple:0.17.2
+FROM turbinelabs/envoy-simple:0.18.0
 
 ENV ENVOY_XDS_HOST=rotor
 ENV PORT=9999:9999
