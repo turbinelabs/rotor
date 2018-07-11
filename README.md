@@ -250,7 +250,7 @@ and "yaml", and the default value is "json".
 ```console
 docker run -d \
   -e 'ROTOR_CMD=file' \
-  -e 'ROTOR_FORMAT=yaml' \
+  -e 'ROTOR_FILE_FORMAT=yaml' \
   -e 'ROTOR_FILE_FILENAME=/path/to/file/in/container' \
   -p 50000:50000 \
   turbinelabs/rotor:0.18.0
