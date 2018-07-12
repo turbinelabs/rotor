@@ -66,7 +66,12 @@ Tags without the namespaced cluster/port prefix will be added to all Instances
 in all Clusters to which the EC2 Instance belongs.
 
 By default, all EC2 Instances in the VPC are examined, but additional filters
-can be specified (see -filters).`
+can be specified (see -filters).
+
+Additionally, by default if AWS credentials are not passed via cli then the 
+AWS's Go SDK will fall back to its default credential chain. This first pulls
+from the environment then falls back to the task role and finally the instance
+profile role.`
 )
 
 func AWSCmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
