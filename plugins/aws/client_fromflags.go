@@ -21,6 +21,7 @@ package aws
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/defaults"
 	"github.com/aws/aws-sdk-go/aws/session"
 	ec2 "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
@@ -54,14 +55,14 @@ func newClientFromFlags(fs tbnflag.FlagSet) clientFromFlags {
 		&ff.awsSecretAccessKey,
 		"aws.secret-access-key",
 		"",
-		usage.Required(usage.Sensitive("The AWS API secret access key")),
+		usage.Sensitive("The AWS API secret access key"),
 	)
 
 	fs.StringVar(
 		&ff.awsAccessKeyID,
 		"aws.access-key-id",
 		"",
-		usage.Required(usage.Sensitive("The AWS API access key ID")),
+		usage.Sensitive("The AWS API access key ID"),
 	)
 
 	return ff
@@ -75,13 +76,42 @@ type clientFromFlagsImpl struct {
 
 func (ff *clientFromFlagsImpl) makeSession() *session.Session {
 	return session.New(&aws.Config{
-		Region: aws.String(ff.awsRegion),
-		Credentials: credentials.NewStaticCredentials(
-			ff.awsAccessKeyID,
-			ff.awsSecretAccessKey,
-			"",
-		),
+		Region:      aws.String(ff.awsRegion),
+		Credentials: ff.awsCredentials(),
 	})
+}
+
+func (ff *clientFromFlagsImpl) awsCredentials() *credentials.Credentials {
+	// This gets all the AWS Defaults. They will be merged correctly with
+	// awsSession on the call to `session.New()
+	defaultConfig := defaults.Config()
+	defaultHandlers := defaults.Handlers()
+
+	customProvider := &credentials.StaticProvider{
+		Value: credentials.Value{
+			AccessKeyID:     ff.awsAccessKeyID,
+			SecretAccessKey: ff.awsSecretAccessKey,
+		},
+	}
+
+	// Unfortunately AWS doesn't have a variable for its default providers.
+	// So this mimics the latest provider chain in the defaults package
+	// located at
+	// https://github.com/aws/aws-sdk-go/blob/d856824058f17a35c61cabdfb1c40559ce070cd9/aws/defaults/defaults.go#L95-L99
+	// This takes the default chain, and adds the `legacy` cli way to highest
+	// hierachy. Currently have an issue to address this in aws-sdk-go
+	// https://github.com/aws/aws-sdk-go/issues/2051
+	return credentials.NewCredentials(
+		&credentials.ChainProvider{
+			VerboseErrors: true,
+			Providers: []credentials.Provider{
+				customProvider,
+				&credentials.EnvProvider{},
+				&credentials.SharedCredentialsProvider{Filename: "", Profile: ""},
+				defaults.RemoteCredProvider(*defaultConfig, defaultHandlers),
+			},
+		},
+	)
 }
 
 func (ff *clientFromFlagsImpl) MakeEC2Client() ec2Interface {
