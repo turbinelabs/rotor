@@ -13,4 +13,4 @@ maintainers: # (optional)
   - name: Turbine Labs
     email: info@turbinelabs.io
     url: https://turbinelabs.io
-appVersion: 0.18.0
+appVersion: 0.18.1

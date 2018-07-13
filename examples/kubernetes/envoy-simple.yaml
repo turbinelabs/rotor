@@ -9,7 +9,7 @@ spec:
         run: envoy-simple
     spec:
       containers:
-      - image: turbinelabs/envoy-simple:0.18.0
+      - image: turbinelabs/envoy-simple:0.18.1
         imagePullPolicy: Always
         name: envoy-simple
         ports:
