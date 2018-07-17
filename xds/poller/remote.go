@@ -51,6 +51,7 @@ func NewRemote(svc service.All) Remote {
 		svc.Zone().Get,
 		svc.Proxy().Get,
 		svc.Domain().Index,
+		svc.Listener().Index,
 		svc.Route().Index,
 		sr.Index,
 		sr.Get,
@@ -63,6 +64,7 @@ func NewRemoteFromFns(
 	zoneGet func(api.ZoneKey) (api.Zone, error),
 	proxyGet func(api.ProxyKey) (api.Proxy, error),
 	domainIndex func(...service.DomainFilter) (api.Domains, error),
+	listenerIndex func(...service.ListenerFilter) (api.Listeners, error),
 	routeIndex func(...service.RouteFilter) (api.Routes, error),
 	sharedRulesIndex func(...service.SharedRulesFilter) (api.SharedRulesSlice, error),
 	sharedRulesGet func(api.SharedRulesKey) (api.SharedRules, error),
@@ -72,6 +74,7 @@ func NewRemoteFromFns(
 		zoneGet,
 		proxyGet,
 		domainIndex,
+		listenerIndex,
 		routeIndex,
 		sharedRulesIndex,
 		sharedRulesGet,
@@ -83,6 +86,7 @@ type svcRemote struct {
 	zoneGet          func(api.ZoneKey) (api.Zone, error)
 	proxyGet         func(api.ProxyKey) (api.Proxy, error)
 	domainIndex      func(...service.DomainFilter) (api.Domains, error)
+	listenerIndex    func(...service.ListenerFilter) (api.Listeners, error)
 	routeIndex       func(...service.RouteFilter) (api.Routes, error)
 	sharedRulesIndex func(...service.SharedRulesFilter) (api.SharedRulesSlice, error)
 	sharedRulesGet   func(api.SharedRulesKey) (api.SharedRules, error)
@@ -152,6 +156,22 @@ func (r svcRemote) ObjectsWithOverrides(
 	}
 	domains = co.Domains
 
+	listeners, err := r.getListeners(proxy.ZoneKey, proxy.ListenerKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	co.Listeners = listeners
+	if len(overrides) != 0 {
+		for _, d := range co.Listeners {
+			if fn := overrides[string(d.ListenerKey)]; fn != nil {
+				console.Info().Printf("Applying object override on Listener %v\n", d.ListenerKey)
+				fn(co)
+			}
+		}
+	}
+	listeners = co.Listeners
+
 	routes, err := r.getRoutes(proxy.ZoneKey, proxy.DomainKeys)
 	if err != nil {
 		return nil, err
@@ -220,6 +240,21 @@ func (r svcRemote) getDomains(zoneKey api.ZoneKey, keys []api.DomainKey) ([]api.
 		return nil, nil
 	}
 	return r.domainIndex(filters...)
+}
+
+func (r svcRemote) getListeners(zoneKey api.ZoneKey, keys []api.ListenerKey) ([]api.Listener, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	filters := make([]service.ListenerFilter, len(keys))
+	for i, key := range keys {
+		filters[i] = service.ListenerFilter{ZoneKey: zoneKey, ListenerKey: key}
+	}
+
+	if len(filters) == 0 {
+		return nil, nil
+	}
+	return r.listenerIndex(filters...)
 }
 
 func (r svcRemote) getRoutes(zoneKey api.ZoneKey, keys []api.DomainKey) ([]api.Route, error) {

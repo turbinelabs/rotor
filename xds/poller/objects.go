@@ -37,6 +37,7 @@ type Objects struct {
 	Proxy       api.Proxy         `json:"proxy"`
 	Clusters    []api.Cluster     `json:"clusters"`
 	Domains     api.Domains       `json:"domains"`
+	Listeners   api.Listeners     `json:"listeners"`
 	Routes      []api.Route       `json:"routes"`
 	SharedRules []api.SharedRules `json:"shared_rules"`
 	Checksum    api.Checksum      `json:"checksum"`

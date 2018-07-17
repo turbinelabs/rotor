@@ -31,6 +31,7 @@ type remoteMocks struct {
 	Remote
 	cluster     *service.MockCluster
 	domain      *service.MockDomain
+	listener    *service.MockListener
 	proxy       *service.MockProxy
 	route       *service.MockRoute
 	sharedRules *service.MockSharedRules
@@ -44,6 +45,7 @@ func mkRemoteMocks(t testing.TB) remoteMocks {
 		zone:        service.NewMockZone(ctrl),
 		cluster:     service.NewMockCluster(ctrl),
 		domain:      service.NewMockDomain(ctrl),
+		listener:    service.NewMockListener(ctrl),
 		proxy:       service.NewMockProxy(ctrl),
 		route:       service.NewMockRoute(ctrl),
 		sharedRules: service.NewMockSharedRules(ctrl),
@@ -54,6 +56,7 @@ func mkRemoteMocks(t testing.TB) remoteMocks {
 		mocks.zone.Get,
 		mocks.proxy.Get,
 		mocks.domain.Index,
+		mocks.listener.Index,
 		mocks.route.Index,
 		mocks.sharedRules.Index,
 		mocks.sharedRules.Get,

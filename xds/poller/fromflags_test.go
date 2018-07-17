@@ -32,6 +32,7 @@ type fromFlagsMocks struct {
 	zone        *service.MockZone
 	proxy       *service.MockProxy
 	domain      *service.MockDomain
+	listener    *service.MockListener
 	route       *service.MockRoute
 	sharedRules *service.MockSharedRules
 	cluster     *service.MockCluster
@@ -52,6 +53,7 @@ func mkFromFlagsMocks(t testing.TB) fromFlagsMocks {
 		service.NewMockZone(ctrl),
 		service.NewMockProxy(ctrl),
 		service.NewMockDomain(ctrl),
+		service.NewMockListener(ctrl),
 		service.NewMockRoute(ctrl),
 		service.NewMockSharedRules(ctrl),
 		service.NewMockCluster(ctrl),
@@ -88,6 +90,7 @@ func TestFromFlagsMake(t *testing.T) {
 		mocks.svc.EXPECT().Zone().Return(mocks.zone),
 		mocks.svc.EXPECT().Proxy().Return(mocks.proxy),
 		mocks.svc.EXPECT().Domain().Return(mocks.domain),
+		mocks.svc.EXPECT().Listener().Return(mocks.listener),
 		mocks.svc.EXPECT().Route().Return(mocks.route),
 		mocks.svc.EXPECT().Cluster().Return(mocks.cluster),
 	)
