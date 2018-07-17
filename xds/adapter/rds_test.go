@@ -257,9 +257,10 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  "Host",
-										Value: "^((?!^turbinelabs\\.io$).)*$",
-										Regex: boolValue(true),
+										Name: "Host",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^((?!^turbinelabs\\.io$).)*$",
+										},
 									},
 								},
 							},
@@ -294,19 +295,22 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  "Cookie",
-										Value: "^(.+?;\\s{0,1})?(TbnBuild=cookie_monster)(;\\s{0,1}(.*?))?$",
-										Regex: boolValue(true),
+										Name: "Cookie",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^(.+?;\\s{0,1})?(TbnBuild=cookie_monster)(;\\s{0,1}(.*?))?$",
+										},
 									},
 									{
-										Name:  "X-BetaSwVersion",
-										Value: "93bf93b",
-										Regex: boolValue(false),
+										Name: "X-BetaSwVersion",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "93bf93b",
+										},
 									},
 									{
-										Name:  "extra",
-										Value: "flavor",
-										Regex: boolValue(false),
+										Name: "extra",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "flavor",
+										},
 									},
 								},
 							},
@@ -384,19 +388,22 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  "Cookie",
-										Value: "^(.+?;\\s{0,1})?(TbnBuild=kermit)(;\\s{0,1}(.*?))?$",
-										Regex: boolValue(true),
+										Name: "Cookie",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^(.+?;\\s{0,1})?(TbnBuild=kermit)(;\\s{0,1}(.*?))?$",
+										},
 									},
 									{
-										Name:  "X-BetaSwVersion",
-										Value: "93bf93b",
-										Regex: boolValue(false),
+										Name: "X-BetaSwVersion",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "93bf93b",
+										},
 									},
 									{
-										Name:  "extra",
-										Value: "flavor",
-										Regex: boolValue(false),
+										Name: "extra",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "flavor",
+										},
 									},
 								},
 							},
@@ -474,19 +481,22 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  ":method",
-										Value: "^(GET|POST|HEAD)$",
-										Regex: boolValue(true),
+										Name: ":method",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^(GET|POST|HEAD)$",
+										},
 									},
 									{
-										Name:  "X-AlphaSwVersion",
-										Value: "93bf93b",
-										Regex: boolValue(false),
+										Name: "X-AlphaSwVersion",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "93bf93b",
+										},
 									},
 									{
-										Name:  "extra",
-										Value: "flavor",
-										Regex: boolValue(false),
+										Name: "extra",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "flavor",
+										},
 									},
 								},
 							},
@@ -563,19 +573,22 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  ":method",
-										Value: "^(GET|POST|HEAD)$",
-										Regex: boolValue(true),
+										Name: ":method",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^(GET|POST|HEAD)$",
+										},
 									},
 									{
-										Name:  "X-AlphaSwVersion",
-										Value: "alpha",
-										Regex: boolValue(false),
+										Name: "X-AlphaSwVersion",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "alpha",
+										},
 									},
 									{
-										Name:  "X-Build",
-										Value: "blue",
-										Regex: boolValue(false),
+										Name: "X-Build",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "blue",
+										},
 									},
 								},
 							},
@@ -860,9 +873,10 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  "X-Requested-With",
-										Value: "XMLHttpRequest",
-										Regex: boolValue(false),
+										Name: "X-Requested-With",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "XMLHttpRequest",
+										},
 									},
 								},
 							},
@@ -962,19 +976,22 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  ":method",
-										Value: "DELETE",
-										Regex: boolValue(false),
+										Name: ":method",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "DELETE",
+										},
 									},
 									{
-										Name:  "Cookie",
-										Value: "^(.+?;\\s{0,1})?(TbnBuild=kermit)(;\\s{0,1}(.*?))?$",
-										Regex: boolValue(true),
+										Name: "Cookie",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^(.+?;\\s{0,1})?(TbnBuild=kermit)(;\\s{0,1}(.*?))?$",
+										},
 									},
 									{
-										Name:  "X-BetaSwVersion",
-										Value: "93bf93b",
-										Regex: boolValue(false),
+										Name: "X-BetaSwVersion",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+											ExactMatch: "93bf93b",
+										},
 									},
 								},
 							},
@@ -1256,9 +1273,10 @@ func TestAllPortsRequest(t *testing.T) {
 								CaseSensitive: boolValue(false),
 								Headers: []*envoyroute.HeaderMatcher{
 									{
-										Name:  "X-Crazy-Header",
-										Value: "^((?!crazy).)*$",
-										Regex: boolValue(true),
+										Name: "X-Crazy-Header",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^((?!crazy).)*$",
+										},
 									},
 								},
 							},
@@ -1386,44 +1404,52 @@ func TestEnvoyHeaderMatcherConversion(t *testing.T) {
 
 	expected := []*envoyroute.HeaderMatcher{
 		{
-			Name:  ":method",
-			Value: "^(GET|POST|HEAD)$",
-			Regex: boolValue(true),
+			Name: ":method",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+				RegexMatch: "^(GET|POST|HEAD)$",
+			},
 		},
 		{
-			Name:  "Cookie",
-			Value: "^(.+?;\\s{0,1})?(!#\\$%&'\\(\\)\\*\\+-\\./:<=>\\?@\\^_`\\{\\|\\}~,==wow)(;\\s{0,1}(.*?))?$",
-			Regex: boolValue(true),
+			Name: "Cookie",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+				RegexMatch: "^(.+?;\\s{0,1})?(!#\\$%&'\\(\\)\\*\\+-\\./:<=>\\?@\\^_`\\{\\|\\}~,==wow)(;\\s{0,1}(.*?))?$",
+			},
 		},
 		{
-			Name:  "Cookie",
-			Value: "^(.+?;\\s{0,1})?(Key=(.+?))(;\\s{0,1}(.+?))?$",
-			Regex: boolValue(true),
+			Name: "Cookie",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+				RegexMatch: "^(.+?;\\s{0,1})?(Key=(.+?))(;\\s{0,1}(.+?))?$",
+			},
 		},
 		{
-			Name:  "Cookie",
-			Value: "^(.+?;\\s{0,1})?(Key=Value)(;\\s{0,1}(.*?))?$",
-			Regex: boolValue(true),
+			Name: "Cookie",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+				RegexMatch: "^(.+?;\\s{0,1})?(Key=Value)(;\\s{0,1}(.*?))?$",
+			},
 		},
 		{
-			Name:  "Cookie",
-			Value: "^(.+?;\\s{0,1})?(\\+ooga\\\\=booga)(;\\s{0,1}(.*?))?$",
-			Regex: boolValue(true),
+			Name: "Cookie",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+				RegexMatch: "^(.+?;\\s{0,1})?(\\+ooga\\\\=booga)(;\\s{0,1}(.*?))?$",
+			},
 		},
 		{
-			Name:  "Key",
-			Value: "Value",
-			Regex: boolValue(false),
+			Name: "Key",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+				ExactMatch: "Value",
+			},
 		},
 		{
-			Name:  "Key2",
-			Value: "",
-			Regex: boolValue(false),
+			Name: "Key2",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+				ExactMatch: "",
+			},
 		},
 		{
-			Name:  "Key3",
-			Value: `special(%3b|;)chars(%2a|\*)`,
-			Regex: boolValue(true),
+			Name: "Key3",
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+				RegexMatch: `special(%3b|;)chars(%2a|\*)`,
+			},
 		},
 	}
 
@@ -1436,9 +1462,10 @@ func TestEnvoyHeaderMatcherConversion(t *testing.T) {
 		mkEnvoyHeaderMatchers(nil, []string{"PUT", "POST"}),
 		[]*envoyroute.HeaderMatcher{
 			{
-				Name:  ":method",
-				Value: "^(PUT|POST)$",
-				Regex: boolValue(true),
+				Name: ":method",
+				HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+					RegexMatch: "^(PUT|POST)$",
+				},
 			},
 		},
 	)
@@ -1464,14 +1491,17 @@ func TestEnvoyQueryParamMatcherConversion(t *testing.T) {
 		{
 			Name:  "Key",
 			Value: "Value",
+			Regex: boolValue(false),
 		},
 		{
 			Name:  "Key2",
 			Value: "",
+			Regex: boolValue(false),
 		},
 		{
 			Name:  "Key3",
 			Value: `special%3bchars%2a`,
+			Regex: boolValue(false),
 		},
 	}
 

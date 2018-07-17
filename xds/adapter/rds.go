@@ -406,9 +406,10 @@ func toEnvoyHeaderMatcher(
 		}
 
 		headerMatcher := &envoyroute.HeaderMatcher{
-			Name:  headerConstraint.Name,
-			Value: headerValue,
-			Regex: boolValue(true),
+			Name: headerConstraint.Name,
+			HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+				RegexMatch: headerValue,
+			},
 		}
 
 		matchers = append(matchers, headerMatcher)
@@ -654,15 +655,17 @@ func mkEnvoyHeaderMatchers(matches []requestMatch, methods []string) []*envoyrou
 		var methodMatcher *envoyroute.HeaderMatcher
 		if len(methods) == 1 {
 			methodMatcher = &envoyroute.HeaderMatcher{
-				Name:  envoyMethodHeader,
-				Value: methods[0],
-				Regex: boolValue(false),
+				Name: envoyMethodHeader,
+				HeaderMatchSpecifier: &envoyroute.HeaderMatcher_ExactMatch{
+					ExactMatch: methods[0],
+				},
 			}
 		} else {
 			methodMatcher = &envoyroute.HeaderMatcher{
-				Name:  envoyMethodHeader,
-				Value: fmt.Sprintf("^(%s)$", strings.Join(methods, "|")),
-				Regex: boolValue(true),
+				Name: envoyMethodHeader,
+				HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+					RegexMatch: fmt.Sprintf("^(%s)$", strings.Join(methods, "|")),
+				},
 			}
 		}
 		matchers = append(matchers, methodMatcher)
@@ -672,34 +675,41 @@ func mkEnvoyHeaderMatchers(matches []requestMatch, methods []string) []*envoyrou
 		switch {
 		case hmm.matchKind == tbnapi.HeaderMatchKind:
 			headerExpr, isRegex := headerMatcherForMetadata(hmm.metadatum.Value)
+			headerMatcher := &envoyroute.HeaderMatcher{Name: hmm.metadatum.Key}
 
-			headerMatcher := &envoyroute.HeaderMatcher{
-				Name:  hmm.metadatum.Key,
-				Value: headerExpr,
-				Regex: boolValue(isRegex),
+			if isRegex {
+				headerMatcher.HeaderMatchSpecifier = &envoyroute.HeaderMatcher_RegexMatch{
+					RegexMatch: headerExpr,
+				}
+			} else {
+				headerMatcher.HeaderMatchSpecifier = &envoyroute.HeaderMatcher_ExactMatch{
+					ExactMatch: headerExpr,
+				}
 			}
 			matchers = append(matchers, headerMatcher)
 
 		case hmm.matchKind == tbnapi.CookieMatchKind && hmm.metadatum.Value == "":
 			headerMatcher := &envoyroute.HeaderMatcher{
 				Name: cookieHeaderName,
-				Value: fmt.Sprintf(
-					wildcardCookieMatchTemplate,
-					regexp.QuoteMeta(hmm.metadatum.Key),
-				),
-				Regex: boolValue(true),
+				HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+					fmt.Sprintf(
+						wildcardCookieMatchTemplate,
+						regexp.QuoteMeta(hmm.metadatum.Key),
+					),
+				},
 			}
 			matchers = append(matchers, headerMatcher)
 
 		case hmm.matchKind == tbnapi.CookieMatchKind && hmm.metadatum.Value != "":
 			headerMatcher := &envoyroute.HeaderMatcher{
 				Name: cookieHeaderName,
-				Value: fmt.Sprintf(
-					exactCookieMatchTemplate,
-					regexp.QuoteMeta(hmm.metadatum.Key),
-					cookieMatcherForMetadata(hmm.metadatum.Value),
-				),
-				Regex: boolValue(true),
+				HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+					RegexMatch: fmt.Sprintf(
+						exactCookieMatchTemplate,
+						regexp.QuoteMeta(hmm.metadatum.Key),
+						cookieMatcherForMetadata(hmm.metadatum.Value),
+					),
+				},
 			}
 			matchers = append(matchers, headerMatcher)
 
@@ -722,7 +732,15 @@ func mkEnvoyHeaderMatchers(matches []requestMatch, methods []string) []*envoyrou
 			return false
 		}
 
-		return matchers[i].Value < matchers[j].Value
+		if matchers[i].GetExactMatch() < matchers[j].GetExactMatch() {
+			return true
+		}
+
+		if matchers[i].GetExactMatch() > matchers[j].GetExactMatch() {
+			return false
+		}
+
+		return matchers[i].GetRegexMatch() < matchers[j].GetRegexMatch()
 	})
 
 	return matchers
@@ -739,6 +757,7 @@ func mkEnvoyQueryParamMatchers(
 			queryMatcher := &envoyroute.QueryParameterMatcher{
 				Name:  qpm.metadatum.Key,
 				Value: queryMatcherForMetadata(qpm.metadatum.Value),
+				Regex: boolValue(false),
 			}
 			matchers = append(matchers, queryMatcher)
 
