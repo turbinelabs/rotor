@@ -54,7 +54,7 @@ func (s lds) adapt(objects *poller.Objects) (cache.Resources, error) {
 	resources := map[string]cache.Resource{}
 	for _, port := range objects.AllPorts() {
 		if domains := objects.DomainsPerPort(port); domains != nil {
-			listener, err := s.mkListener(objects.Proxy, port, domains)
+			listener, err := s.mkListener(objects.Proxy, port, domains, objects.ListenerForPort(port))
 			if err != nil {
 				return cache.Resources{}, err
 			}
@@ -367,6 +367,23 @@ func (s lds) mkAccessLog() (*envoylog.AccessLog, error) {
 	return nil, nil
 }
 
+func (s lds) mkTracingConfig(listener *tbnapi.Listener) (*envoyhcm.HttpConnectionManager_Tracing, error) {
+	if listener != nil && listener.TracingConfig != nil {
+		var tracingOperationName envoyhcm.HttpConnectionManager_Tracing_OperationName
+		if listener.TracingConfig.Ingress {
+			tracingOperationName = envoyhcm.INGRESS
+		} else {
+			tracingOperationName = envoyhcm.EGRESS
+		}
+
+		return &envoyhcm.HttpConnectionManager_Tracing{
+			RequestHeadersForTags: listener.TracingConfig.RequestHeadersForTags,
+			OperationName:         tracingOperationName,
+		}, nil
+	}
+	return nil, nil
+}
+
 func (s lds) mkUpstreamLog() (*envoylog.AccessLog, error) {
 	if s.loggingCluster != "" {
 		return mkGRPCAccessLog(grpcUpstreamLogID, s.loggingCluster, log.TbnUpstreamFormat)
@@ -395,6 +412,7 @@ func (s lds) mkHTTPRouterStruct() (*types.Struct, error) {
 func (s lds) mkHTTPConnectionManager(
 	proxyName string,
 	port int,
+	tracing *envoyhcm.HttpConnectionManager_Tracing,
 ) (*envoyhcm.HttpConnectionManager, error) {
 	router, err := s.mkHTTPRouterStruct()
 	if err != nil {
@@ -435,6 +453,7 @@ func (s lds) mkHTTPConnectionManager(
 				ConfigSource:    xdsClusterConfig,
 			},
 		},
+		Tracing:   tracing,
 		AccessLog: accessLogs,
 	}, nil
 }
@@ -471,9 +490,14 @@ func (s lds) mkListener(
 	proxy tbnapi.Proxy,
 	port int,
 	domains tbnapi.Domains,
+	listener *tbnapi.Listener,
 ) (*envoyapi.Listener, error) {
 	name := mkListenerName(proxy.Name, port)
-	httpConnManager, err := s.mkHTTPConnectionManager(proxy.Name, port)
+	tracingConfig, err := s.mkTracingConfig(listener)
+	if err != nil {
+		return nil, err
+	}
+	httpConnManager, err := s.mkHTTPConnectionManager(proxy.Name, port, tracingConfig)
 	if err != nil {
 		return nil, err
 	}

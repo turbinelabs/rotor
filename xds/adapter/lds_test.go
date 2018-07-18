@@ -55,10 +55,19 @@ func checkListeners(
 	assert.HasSameElements(t, actualEnvoyListeners, expected)
 }
 
-func TestMkHttpConnectionManager(t *testing.T) {
+func testTracingConfig(t *testing.T, ingress bool, requestHeadersForTags []string) {
 	s := lds{}
 
-	httpConnMgr, err := s.mkHTTPConnectionManager("foo", 1000)
+	var operationName = envoyhcm.EGRESS
+	if ingress {
+		operationName = envoyhcm.INGRESS
+	}
+
+	tracingConfig := &envoyhcm.HttpConnectionManager_Tracing{
+		OperationName:         operationName,
+		RequestHeadersForTags: requestHeadersForTags,
+	}
+	httpConnMgr, err := s.mkHTTPConnectionManager("foo", 1000, tracingConfig)
 	assert.Nil(t, err)
 
 	assert.DeepEqual(t,
@@ -82,14 +91,62 @@ func TestMkHttpConnectionManager(t *testing.T) {
 					ConfigSource:    xdsClusterConfig,
 				},
 			},
+			Tracing: &envoyhcm.HttpConnectionManager_Tracing{
+				OperationName:         operationName,
+				RequestHeadersForTags: requestHeadersForTags,
+			},
 		},
 	)
+}
+
+func TestMkHttpConnectionManager(t *testing.T) {
+	s := lds{}
+
+	httpConnMgr, err := s.mkHTTPConnectionManager("foo", 1000, nil)
+	assert.Nil(t, err)
+
+	assert.DeepEqual(t,
+		httpConnMgr,
+		&envoyhcm.HttpConnectionManager{
+			CodecType: envoyhcm.AUTO,
+			// ":" is no-bueno for stats strings, other stuff gets properly escaped
+			StatPrefix: "foo-1000",
+			HttpFilters: []*envoyhcm.HttpFilter{
+				{
+					Name:   util.CORS,
+					Config: &types.Struct{},
+				},
+				{
+					Name: util.Router,
+				},
+			},
+			RouteSpecifier: &envoyhcm.HttpConnectionManager_Rds{
+				Rds: &envoyhcm.Rds{
+					RouteConfigName: "foo:1000",
+					ConfigSource:    xdsClusterConfig,
+				},
+			},
+			Tracing: nil,
+		},
+	)
+}
+
+func TestMkHttpConnectionManagerWithIngressListener(t *testing.T) {
+	testTracingConfig(t, true, []string{"x-header-1", "x-header-2"})
+}
+
+func TestMkHttpConnectionManagerWithEgressListener(t *testing.T) {
+	testTracingConfig(t, true, []string{"x-header-1", "x-header-2"})
+}
+
+func TestMkHttpConnectionManagerWithoutHeaders(t *testing.T) {
+	testTracingConfig(t, true, []string{})
 }
 
 func TestMkHttpConnectionManagerWithGRPCLog(t *testing.T) {
 	s := lds{loggingCluster: "log-cluster"}
 
-	httpConnMgr, err := s.mkHTTPConnectionManager("foo", 1000)
+	httpConnMgr, err := s.mkHTTPConnectionManager("foo", 1000, nil)
 	assert.Nil(t, err)
 
 	assert.DeepEqual(t,
@@ -177,13 +234,13 @@ func TestEmptyRequestSeveralDomains(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NonNil(t, resources.Items)
 
-	httpConnMgr8080, err := s.mkHTTPConnectionManager("main-test-proxy", 8080)
+	httpConnMgr8080, err := s.mkHTTPConnectionManager("main-test-proxy", 8080, nil)
 	assert.Nil(t, err)
 
 	httpFilter8080, err := util.MessageToStruct(httpConnMgr8080)
 	assert.Nil(t, err)
 
-	httpConnMgr8443, err := s.mkHTTPConnectionManager("main-test-proxy", 8443)
+	httpConnMgr8443, err := s.mkHTTPConnectionManager("main-test-proxy", 8443, nil)
 	assert.Nil(t, err)
 
 	httpFilter8443, err := util.MessageToStruct(httpConnMgr8443)

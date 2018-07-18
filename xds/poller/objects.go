@@ -49,6 +49,7 @@ type objectsMeta struct {
 	domainKeysToName     map[api.DomainKey]string
 	sharedRulesMap       map[api.SharedRulesKey]api.SharedRules
 	domainsByPort        map[int]api.Domains
+	listenersByPort      map[int]api.Listener
 	routesByDomainKey    map[api.DomainKey]api.Routes
 	subsetsByClusterKey  map[api.ClusterKey][][]string
 	hash                 string
@@ -133,6 +134,11 @@ func (co *Objects) init() {
 	for _, d := range co.Domains {
 		meta.domainKeysToName[d.DomainKey] = d.Name
 		meta.domainsByPort[d.Port] = append(meta.domainsByPort[d.Port], d)
+	}
+
+	meta.listenersByPort = make(map[int]api.Listener)
+	for _, l := range co.Listeners {
+		meta.listenersByPort[l.Port] = l
 	}
 
 	meta.routesByDomainKey = make(map[api.DomainKey]api.Routes, len(co.Domains))
@@ -260,6 +266,18 @@ func (co *Objects) DomainsPerPort(port int) api.Domains {
 	result := make(api.Domains, len(domains))
 	copy(result, domains)
 	return result
+}
+
+// ListenerForPort returns the listener for the given port
+func (co *Objects) ListenerForPort(port int) *api.Listener {
+	co.maybeInit()
+
+	listener, ok := co.meta.listenersByPort[port]
+	if !ok {
+		return nil
+	}
+
+	return &listener
 }
 
 // RoutesPerDomain returns all routes associated with the given DomainKey
