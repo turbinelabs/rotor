@@ -22,6 +22,7 @@ import (
 	"math"
 	"reflect"
 	"testing"
+	"time"
 
 	envoyapi "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	envoycore "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
@@ -741,4 +742,55 @@ func TestDurationPtrToIntPtr(t *testing.T) {
 	a = durationPtrToIntPtr(&types.Duration{Seconds: 5000, Nanos: 123344})
 	b = ptr.Int(5000000)
 	assert.DeepEqual(t, a, b)
+}
+
+func TestIntToTimeDurationPtr(t *testing.T) {
+	assert.DeepEqual(
+		t,
+		intToTimeDurationPtr(0, time.Millisecond),
+		durationPtr(time.Duration(0)),
+	)
+
+	assert.DeepEqual(
+		t,
+		intToTimeDurationPtr(100, time.Millisecond),
+		durationPtr(100*time.Millisecond),
+	)
+}
+
+func TestIntPtrToTimeDurationPtr(t *testing.T) {
+	assert.Nil(t, intPtrToTimeDurationPtr(nil, time.Millisecond))
+
+	assert.DeepEqual(
+		t,
+		intPtrToTimeDurationPtr(ptr.Int(0), time.Millisecond),
+		durationPtr(time.Duration(0)),
+	)
+	assert.DeepEqual(
+		t,
+		intPtrToTimeDurationPtr(ptr.Int(30000), time.Millisecond),
+		durationPtr(30*time.Second),
+	)
+	assert.DeepEqual(
+		t,
+		intPtrToTimeDurationPtr(ptr.Int(30), time.Second),
+		durationPtr(30*time.Second),
+	)
+
+}
+
+func TestTimeDurationPtrToInt(t *testing.T) {
+	assert.Equal(t, timeDurationPtrToInt(durationPtr(time.Duration(0)), time.Second), 0)
+
+	assert.Equal(
+		t,
+		timeDurationPtrToInt(durationPtr(10*time.Second), time.Millisecond),
+		10000,
+	)
+
+	assert.Equal(
+		t,
+		timeDurationPtrToInt(durationPtr(10*time.Second), time.Second),
+		10,
+	)
 }

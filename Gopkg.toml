@@ -23,7 +23,7 @@ ignored = [
 
 [[constraint]]
   name = "github.com/envoyproxy/go-control-plane"
-  revision = "v0.3"
+  revision = "v0.4"
 
 [[constraint]]
   name = "github.com/gambol99/go-marathon"

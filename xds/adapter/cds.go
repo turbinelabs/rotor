@@ -244,8 +244,8 @@ func tbnToEnvoyHealthChecks(thcs tbnapi.HealthChecks) ([]*envoycore.HealthCheck,
 
 func tbnToEnvoyHealthCheck(thc tbnapi.HealthCheck) (*envoycore.HealthCheck, error) {
 	o := &envoycore.HealthCheck{
-		Timeout:               intToDurationPtr(thc.TimeoutMsec),
-		Interval:              intToDurationPtr(thc.IntervalMsec),
+		Timeout:               intToTimeDurationPtr(thc.TimeoutMsec, time.Millisecond),
+		Interval:              intToTimeDurationPtr(thc.IntervalMsec, time.Millisecond),
 		IntervalJitter:        intPtrToDurationPtr(thc.IntervalJitterMsec),
 		UnhealthyThreshold:    intToUint32Ptr(thc.UnhealthyThreshold),
 		HealthyThreshold:      intToUint32Ptr(thc.HealthyThreshold),
@@ -346,8 +346,8 @@ func envoyToTbnHealthCheck(ehc *envoycore.HealthCheck) tbnapi.HealthCheck {
 	}
 
 	o := tbnapi.HealthCheck{
-		TimeoutMsec:               durationPtrToInt(ehc.Timeout),
-		IntervalMsec:              durationPtrToInt(ehc.Interval),
+		TimeoutMsec:               timeDurationPtrToInt(ehc.Timeout, time.Millisecond),
+		IntervalMsec:              timeDurationPtrToInt(ehc.Interval, time.Millisecond),
 		IntervalJitterMsec:        durationPtrToIntPtr(ehc.IntervalJitter),
 		UnhealthyThreshold:        uint32PtrToInt(ehc.UnhealthyThreshold),
 		HealthyThreshold:          uint32PtrToInt(ehc.HealthyThreshold),

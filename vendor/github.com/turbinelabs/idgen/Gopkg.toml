@@ -1,0 +1,11 @@
+ignored = [
+  "github.com/turbinelabs/test*",
+]
+
+[prune]
+  go-tests = true
+  unused-packages = true
+
+[[constraint]]
+  name = "github.com/nu7hatch/gouuid"
+  revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"

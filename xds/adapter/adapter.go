@@ -356,6 +356,22 @@ func intToDurationPtr(i int) *types.Duration {
 	}
 }
 
+func intToTimeDurationPtr(i int, scale time.Duration) *time.Duration {
+	return durationPtr(time.Duration(i) * scale)
+}
+
+func intPtrToTimeDurationPtr(i *int, scale time.Duration) *time.Duration {
+	if i == nil {
+		return nil
+	}
+
+	return intToTimeDurationPtr(*i, scale)
+}
+
+func durationPtr(d time.Duration) *time.Duration {
+	return &d
+}
+
 // durationPtrToIntPtr supports millisecond granularity, which has the following
 // implications:
 //   - a Duration greater than math.MaxInt32 milliseconds will return nil
@@ -383,6 +399,14 @@ func durationPtrToInt(d *types.Duration) int {
 	}
 
 	return *iPtr
+}
+
+func timeDurationPtrToInt(d *time.Duration, scale time.Duration) int {
+	if d == nil {
+		return 0
+	}
+
+	return int(*d / scale)
 }
 
 func base64StringToPayload(str string) (*envoycore.HealthCheck_Payload, error) {

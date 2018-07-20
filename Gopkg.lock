@@ -71,7 +71,7 @@
     "pkg/server",
     "pkg/util"
   ]
-  revision = "v0.3"
+  revision = "v0.4"
 
 [[projects]]
   name = "github.com/gambol99/go-marathon"
@@ -211,10 +211,21 @@
   version = "1.0.0"
 
 [[projects]]
+  name = "github.com/nu7hatch/gouuid"
+  packages = ["."]
+  revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+
+[[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
   revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
   version = "v1.0.1"
+
+[[projects]]
+  name = "github.com/turbinelabs/idgen"
+  packages = ["."]
+  revision = "02e52ff92000381ba15d169b335962354c6a341c"
+  version = "0.18.1"
 
 [[projects]]
   branch = "master"
@@ -456,6 +467,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cca90f9d839f0386d57856d35132a68aa9c76dbcc907c91dbe9ff05332cb5991"
+  inputs-digest = "7cf0dfe9281df68c4c992aa9409d5168b0bfb2a81e68c6b443823f197d2023dd"
   solver-name = "gps-cdcl"
   solver-version = 1

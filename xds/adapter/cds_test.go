@@ -150,8 +150,8 @@ func TestManyClusters(t *testing.T) {
 			},
 			HealthChecks: []*envoycore.HealthCheck{
 				{
-					Timeout:            &types.Duration{Nanos: 100000000},
-					Interval:           &types.Duration{Seconds: 10},
+					Timeout:            durationPtr(time.Duration(100000000)),
+					Interval:           durationPtr(time.Duration(10000000000)),
 					IntervalJitter:     &types.Duration{Nanos: 300000000},
 					UnhealthyThreshold: &types.UInt32Value{Value: uint32(10)},
 					HealthyThreshold:   &types.UInt32Value{Value: uint32(5)},
@@ -250,8 +250,8 @@ func TestManyClusters(t *testing.T) {
 			},
 			HealthChecks: []*envoycore.HealthCheck{
 				{
-					Timeout:            &types.Duration{Nanos: 100000000},
-					Interval:           &types.Duration{Seconds: 15},
+					Timeout:            durationPtr(time.Duration(100000000)),
+					Interval:           durationPtr(time.Duration(15000000000)),
 					IntervalJitter:     &types.Duration{Nanos: 300000000},
 					UnhealthyThreshold: &types.UInt32Value{Value: uint32(10)},
 					HealthyThreshold:   &types.UInt32Value{Value: uint32(5)},
@@ -547,8 +547,8 @@ func TestTbnToEnvoyHealthChecksConvertsSuccessfully(t *testing.T) {
 	assert.Nil(t, err)
 	assert.DeepEqual(t, ehcs, []*envoycore.HealthCheck{
 		{
-			Timeout:            &types.Duration{Nanos: 100000000},
-			Interval:           &types.Duration{Seconds: 10},
+			Timeout:            durationPtr(time.Duration(100000000)),
+			Interval:           durationPtr(time.Duration(10000000000)),
 			IntervalJitter:     &types.Duration{Nanos: 300000000},
 			UnhealthyThreshold: &types.UInt32Value{Value: uint32(10)},
 			HealthyThreshold:   &types.UInt32Value{Value: uint32(5)},
@@ -570,8 +570,8 @@ func TestTbnToEnvoyHealthChecksConvertsSuccessfully(t *testing.T) {
 			},
 		},
 		{
-			Timeout:               &types.Duration{Nanos: 100000000},
-			Interval:              &types.Duration{Seconds: 30},
+			Timeout:               durationPtr(time.Duration(100000000)),
+			Interval:              durationPtr(time.Duration(30000000000)),
 			IntervalJitter:        &types.Duration{Seconds: 1},
 			UnhealthyThreshold:    &types.UInt32Value{Value: uint32(20)},
 			HealthyThreshold:      &types.UInt32Value{Value: uint32(10)},
