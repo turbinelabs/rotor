@@ -187,8 +187,16 @@ var (
 	xdsClusterConfig = envoycore.ConfigSource{
 		ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 			ApiConfigSource: &envoycore.ApiConfigSource{
-				ApiType:      envoycore.ApiConfigSource_GRPC,
-				ClusterNames: []string{xdsClusterName},
+				ApiType: envoycore.ApiConfigSource_GRPC,
+				GrpcServices: []*envoycore.GrpcService{
+					{
+						TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+							EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+								ClusterName: xdsClusterName,
+							},
+						},
+					},
+				},
 				RefreshDelay: ptr.Duration(xdsRefreshDelaySecs * time.Second),
 			},
 		},

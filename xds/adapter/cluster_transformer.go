@@ -17,6 +17,7 @@ limitations under the License.
 package adapter
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -201,7 +202,12 @@ func newClusterResolver(
 	}
 
 	acs := configSource.GetApiConfigSource()
-	i, err := resolveEDSInstance(acs.GetClusterNames(), selector, clusterMap)
+	clusterNames, err := resolveClusterNames(acs)
+	if err != nil {
+		return nil, err
+	}
+
+	i, err := resolveEDSInstance(clusterNames, selector, clusterMap)
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +229,36 @@ func newClusterResolver(
 	}
 
 	return nil, fmt.Errorf("Unrecognized ApiConfigSourceType: %s", acs.GetApiType().String())
+}
+
+func resolveClusterNames(acs *envoycore.ApiConfigSource) ([]string, error) {
+	var clusterNames []string
+	if acs.GetApiType() == envoycore.ApiConfigSource_GRPC {
+		if len(acs.GetGrpcServices()) < 1 {
+			return nil, errors.New(
+				"Must have at least one GrpcService defined for a GRPC ConfigSource",
+			)
+		}
+
+		if egc := acs.GetGrpcServices()[0].GetEnvoyGrpc(); egc != nil {
+			clusterNames = []string{egc.GetClusterName()}
+		} else {
+			return nil, errors.New(
+				"Undefined EnvoyGrpc GrpcService for GRPC ConfigSource",
+			)
+		}
+	} else {
+		clusterNames = acs.GetClusterNames()
+	}
+
+	if len(clusterNames) < 1 {
+		return nil, fmt.Errorf(
+			"Unable to resolve cluster names for ApiConfigSource: %s",
+			acs.String(),
+		)
+	}
+
+	return clusterNames, nil
 }
 
 func resolveEDSInstance(

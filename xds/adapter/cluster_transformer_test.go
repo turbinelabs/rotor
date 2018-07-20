@@ -515,8 +515,8 @@ func TestNewClusterResolverNonApiConfigError(t *testing.T) {
 	assert.ErrorContains(t, err, "Only ApiConfigSource supported")
 }
 
-func newClusterResolverForAPIType(
-	apiType envoycore.ApiConfigSource_ApiType,
+func newClusterResolverForConfigSource(
+	cs *envoycore.ConfigSource,
 ) (collector.ClusterResolver, error) {
 	scMap := map[string]*envoyapi.Cluster{
 		"c1": {
@@ -548,40 +548,121 @@ func newClusterResolverForAPIType(
 		},
 	}
 
-	cs := &envoycore.ConfigSource{
-		ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
-			ApiConfigSource: &envoycore.ApiConfigSource{
-				ApiType:      apiType,
-				ClusterNames: []string{"c1"},
-			},
-		},
-	}
-
 	return newClusterResolver(cs, mkEmptyRequest, scMap, headSelector)
 }
 
 func TestNewClusterResolverForRestLegacy(t *testing.T) {
-	cr, err := newClusterResolverForAPIType(envoycore.ApiConfigSource_REST_LEGACY)
+	cr, err := newClusterResolverForConfigSource(
+		&envoycore.ConfigSource{
+			ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+				ApiConfigSource: &envoycore.ApiConfigSource{
+					ApiType:      envoycore.ApiConfigSource_REST_LEGACY,
+					ClusterNames: []string{"c1"},
+				},
+			},
+		},
+	)
+
 	assert.NonNil(t, cr)
 	assert.Nil(t, err)
 }
 
 func TestNewClusterResolverForRest(t *testing.T) {
-	cr, err := newClusterResolverForAPIType(envoycore.ApiConfigSource_REST)
+	cr, err := newClusterResolverForConfigSource(
+		&envoycore.ConfigSource{
+			ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+				ApiConfigSource: &envoycore.ApiConfigSource{
+					ApiType:      envoycore.ApiConfigSource_REST,
+					ClusterNames: []string{"c1"},
+				},
+			},
+		},
+	)
+
 	assert.NonNil(t, cr)
 	assert.Nil(t, err)
 }
 
 func TestNewClusterResolverForGrpc(t *testing.T) {
-	cr, err := newClusterResolverForAPIType(envoycore.ApiConfigSource_GRPC)
+	cr, err := newClusterResolverForConfigSource(
+		&envoycore.ConfigSource{
+			ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+				ApiConfigSource: &envoycore.ApiConfigSource{
+					ApiType: envoycore.ApiConfigSource_GRPC,
+					GrpcServices: []*envoycore.GrpcService{
+						{
+							TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+								EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+									ClusterName: "c1",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	)
 	assert.NonNil(t, cr)
 	assert.Nil(t, err)
 }
 
 func TestNewClusterResolverForUnknownApiType(t *testing.T) {
-	cr, err := newClusterResolverForAPIType(envoycore.ApiConfigSource_ApiType(5))
+	cr, err := newClusterResolverForConfigSource(
+		&envoycore.ConfigSource{
+			ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+				ApiConfigSource: &envoycore.ApiConfigSource{
+					ApiType:      envoycore.ApiConfigSource_ApiType(5),
+					ClusterNames: []string{"c1"},
+				},
+			},
+		},
+	)
+
 	assert.Nil(t, cr)
 	assert.ErrorContains(t, err, "Unrecognized ApiConfigSourceType")
+}
+
+func TestNewClusterResolverEmptyClusterNames(t *testing.T) {
+	cr, err := newClusterResolverForConfigSource(
+		&envoycore.ConfigSource{
+			ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
+				ApiConfigSource: &envoycore.ApiConfigSource{
+					ApiType: envoycore.ApiConfigSource_REST,
+				},
+			},
+		},
+	)
+	assert.Nil(t, cr)
+	assert.ErrorContains(t, err, "Unable to resolve cluster names")
+}
+
+func TestResolveClusterNamesGrpcTypeWithNoGrpcServices(t *testing.T) {
+	got, err := resolveClusterNames(
+		&envoycore.ApiConfigSource{
+			ApiType: envoycore.ApiConfigSource_GRPC,
+		},
+	)
+
+	assert.Nil(t, got)
+	assert.ErrorContains(t, err, "Must have at least one GrpcService")
+}
+
+func TestResolveClusterNamesGrpcTypeWithNoEnvoyGrpcService(t *testing.T) {
+	got, err := resolveClusterNames(
+		&envoycore.ApiConfigSource{
+			ApiType: envoycore.ApiConfigSource_GRPC,
+			GrpcServices: []*envoycore.GrpcService{
+				{
+					TargetSpecifier: &envoycore.GrpcService_GoogleGrpc_{
+						GoogleGrpc: &envoycore.GrpcService_GoogleGrpc{},
+					},
+				},
+			},
+		},
+	)
+
+	assert.Nil(t, got)
+	assert.ErrorContains(t, err, "Undefined EnvoyGrpc GrpcService")
 }
 
 func TestResolveEDSInstanceReturnsEmptyForEmptyClusterNames(t *testing.T) {

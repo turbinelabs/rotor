@@ -89,8 +89,16 @@ func TestManyClusters(t *testing.T) {
 				EdsConfig: &envoycore.ConfigSource{
 					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 						ApiConfigSource: &envoycore.ApiConfigSource{
-							ApiType:      envoycore.ApiConfigSource_GRPC,
-							ClusterNames: []string{xdsClusterName},
+							ApiType: envoycore.ApiConfigSource_GRPC,
+							GrpcServices: []*envoycore.GrpcService{
+								{
+									TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+										EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+											ClusterName: xdsClusterName,
+										},
+									},
+								},
+							},
 							RefreshDelay: ptr.Duration(xdsRefreshDelaySecs * time.Second),
 						},
 					},
@@ -173,8 +181,16 @@ func TestManyClusters(t *testing.T) {
 				EdsConfig: &envoycore.ConfigSource{
 					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 						ApiConfigSource: &envoycore.ApiConfigSource{
-							ApiType:      envoycore.ApiConfigSource_GRPC,
-							ClusterNames: []string{xdsClusterName},
+							ApiType: envoycore.ApiConfigSource_GRPC,
+							GrpcServices: []*envoycore.GrpcService{
+								{
+									TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+										EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+											ClusterName: xdsClusterName,
+										},
+									},
+								},
+							},
 							RefreshDelay: ptr.Duration(xdsRefreshDelaySecs * time.Second),
 						},
 					},
@@ -191,8 +207,16 @@ func TestManyClusters(t *testing.T) {
 				EdsConfig: &envoycore.ConfigSource{
 					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 						ApiConfigSource: &envoycore.ApiConfigSource{
-							ApiType:      envoycore.ApiConfigSource_GRPC,
-							ClusterNames: []string{xdsClusterName},
+							ApiType: envoycore.ApiConfigSource_GRPC,
+							GrpcServices: []*envoycore.GrpcService{
+								{
+									TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+										EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+											ClusterName: xdsClusterName,
+										},
+									},
+								},
+							},
 							RefreshDelay: ptr.Duration(xdsRefreshDelaySecs * time.Second),
 						},
 					},
@@ -274,8 +298,16 @@ func TestAdaptClustersTemplate(t *testing.T) {
 				EdsConfig: &envoycore.ConfigSource{
 					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 						ApiConfigSource: &envoycore.ApiConfigSource{
-							ApiType:      envoycore.ApiConfigSource_GRPC,
-							ClusterNames: []string{"somewhere"},
+							ApiType: envoycore.ApiConfigSource_GRPC,
+							GrpcServices: []*envoycore.GrpcService{
+								{
+									TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+										EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+											ClusterName: xdsClusterName,
+										},
+									},
+								},
+							},
 							RefreshDelay: ptr.Duration(time.Second),
 						},
 					},
@@ -301,8 +333,16 @@ func TestAdaptClustersTemplate(t *testing.T) {
 				EdsConfig: &envoycore.ConfigSource{
 					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 						ApiConfigSource: &envoycore.ApiConfigSource{
-							ApiType:      envoycore.ApiConfigSource_GRPC,
-							ClusterNames: []string{"somewhere"},
+							ApiType: envoycore.ApiConfigSource_GRPC,
+							GrpcServices: []*envoycore.GrpcService{
+								{
+									TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+										EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+											ClusterName: xdsClusterName,
+										},
+									},
+								},
+							},
 							RefreshDelay: ptr.Duration(time.Second),
 						},
 					},
@@ -319,8 +359,16 @@ func TestAdaptClustersTemplate(t *testing.T) {
 				EdsConfig: &envoycore.ConfigSource{
 					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 						ApiConfigSource: &envoycore.ApiConfigSource{
-							ApiType:      envoycore.ApiConfigSource_GRPC,
-							ClusterNames: []string{"somewhere"},
+							ApiType: envoycore.ApiConfigSource_GRPC,
+							GrpcServices: []*envoycore.GrpcService{
+								{
+									TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+										EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+											ClusterName: xdsClusterName,
+										},
+									},
+								},
+							},
 							RefreshDelay: ptr.Duration(time.Second),
 						},
 					},
@@ -337,8 +385,16 @@ func TestAdaptClustersTemplate(t *testing.T) {
 				EdsConfig: &envoycore.ConfigSource{
 					ConfigSourceSpecifier: &envoycore.ConfigSource_ApiConfigSource{
 						ApiConfigSource: &envoycore.ApiConfigSource{
-							ApiType:      envoycore.ApiConfigSource_GRPC,
-							ClusterNames: []string{"somewhere"},
+							ApiType: envoycore.ApiConfigSource_GRPC,
+							GrpcServices: []*envoycore.GrpcService{
+								{
+									TargetSpecifier: &envoycore.GrpcService_EnvoyGrpc_{
+										EnvoyGrpc: &envoycore.GrpcService_EnvoyGrpc{
+											ClusterName: xdsClusterName,
+										},
+									},
+								},
+							},
 							RefreshDelay: ptr.Duration(time.Second),
 						},
 					},

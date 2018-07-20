@@ -85,7 +85,9 @@ func TestEnvoyToTbnRoundTrip(t *testing.T) {
 		acs := cs.GetApiConfigSource()
 		assert.NonNil(t, acs)
 		assert.Equal(t, acs.GetApiType(), envoycore.ApiConfigSource_GRPC)
-		assert.ArrayEqual(t, acs.GetClusterNames(), []string{"tbn-xds"})
+		assert.Nil(t, acs.GetClusterNames())
+		assert.Equal(t, len(acs.GetGrpcServices()), 1)
+		assert.Equal(t, acs.GetGrpcServices()[0].GetEnvoyGrpc().GetClusterName(), "tbn-xds")
 		assert.Equal(t, *acs.GetRefreshDelay(), 30*time.Second)
 
 		return cr, nil

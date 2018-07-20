@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: turbinelabs/build-common:0.10.0.2
+      - image: turbinelabs/build-common:0.10.0.3
 
     working_directory: "/go/src/github.com/turbinelabs/rotor"
 
