@@ -23,7 +23,7 @@ import (
 
 // FixtureHash is the expected result calling TerribleHash() on the *Objects
 // produced by MkFixtureObjects()
-const FixtureHash = "Qe/lgPW+vy9S4RefDfU0bQ=="
+const FixtureHash = "4vMq/QYlmHdTBS+X3ZprAw=="
 
 // MkFixtureObjects produces a *Objects that exercises most of the surface area
 // of the API, suitable for testing.
@@ -370,7 +370,6 @@ func MkFixtureObjects() *Objects {
 													Name:           "X-Header-Nested",
 													Value:          "header-value",
 													ValueIsLiteral: true,
-													AlwaysSend:     true,
 												},
 											},
 										},
@@ -538,7 +537,6 @@ func MkFixtureObjects() *Objects {
 								Name:           "X-Test-Header",
 								Value:          "value-from-sr",
 								ValueIsLiteral: true,
-								AlwaysSend:     true,
 							},
 						},
 					},
@@ -548,7 +546,6 @@ func MkFixtureObjects() *Objects {
 								Name:           "cookie-name",
 								Value:          "value-from-sr",
 								ValueIsLiteral: true,
-								AlwaysSend:     true,
 							},
 						},
 					},
