@@ -3,6 +3,7 @@ ignored = [
   "github.com/turbinelabs/cache",
   "github.com/turbinelabs/cli*",
   "github.com/turbinelabs/codec",
+  "github.com/turbinelabs/idgen*",
   "github.com/turbinelabs/nonstdlib*",
   "github.com/turbinelabs/stats",
   "github.com/turbinelabs/test*",
