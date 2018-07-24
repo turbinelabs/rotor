@@ -115,7 +115,7 @@ Rotor. The easiest way to create all these is via
 [the YAML file](examples/kubernetes-rotor.yaml) in this repo:
 
 ```console
-kubectl create -f https://github.com/turbinelabs/rotor/blob/master/examples/kubernetes/kubernetes-rotor.yaml
+kubectl create -f https://raw.githubusercontent.com/turbinelabs/rotor/master/examples/kubernetes/kubernetes-rotor.yaml
 ```
 
 Rotor discovers clusters by looking for active pods in Kubernetes and grouping
