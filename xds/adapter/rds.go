@@ -277,6 +277,9 @@ func resolveTLSRequirement(
 	domainCfg domainConfig,
 ) (envoyroute.VirtualHost_TlsRequirementType, domainConfig) {
 	shouldRedirectHTTP := false
+	if domainCfg.Domain.ForceHTTPS {
+		shouldRedirectHTTP = true
+	}
 	cleanRedirects := []tbnapi.Redirect{}
 	for _, rd := range domainCfg.Domain.Redirects {
 		if isHTTPSRedirect(domainCfg.Domain.Name, rd) {

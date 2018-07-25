@@ -17,7 +17,9 @@ limitations under the License.
 package adapter
 
 import (
+	"fmt"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
@@ -62,6 +64,64 @@ func checkRouteConfigurations(
 	sort.Sort(sort.Reverse(routeConfigsByName(actualConfigs)))
 
 	assert.ArrayEqual(t, actualConfigs, expected)
+}
+
+func TestResolveTLSRequirement(t *testing.T) {
+	trueTestCases := []struct {
+		forceHTTPS         bool
+		forceHTTPSRedirect bool
+		sslConfig          bool
+		expected           envoyroute.VirtualHost_TlsRequirementType
+	}{
+		{true, true, true, envoyroute.VirtualHost_ALL},
+		{true, true, false, envoyroute.VirtualHost_EXTERNAL_ONLY},
+		{true, false, true, envoyroute.VirtualHost_ALL},
+		{true, false, false, envoyroute.VirtualHost_EXTERNAL_ONLY},
+		{false, true, true, envoyroute.VirtualHost_ALL},
+		{false, true, false, envoyroute.VirtualHost_EXTERNAL_ONLY},
+		{false, false, true, envoyroute.VirtualHost_ALL},
+		{false, false, false, envoyroute.VirtualHost_NONE},
+	}
+
+	for _, tc := range trueTestCases {
+		assert.Group(
+			fmt.Sprintf(
+				"forceHTTPS %s, forceHTTPSRedirect %s, sslConfig %s",
+				strconv.FormatBool(tc.forceHTTPS),
+				strconv.FormatBool(tc.forceHTTPSRedirect),
+				strconv.FormatBool(tc.sslConfig)),
+			t,
+			func(g *assert.G) {
+				domain := tbnapi.Domain{
+					DomainKey:  "D0",
+					ZoneKey:    "Z0",
+					Name:       "foo.example.com",
+					Port:       8080,
+					ForceHTTPS: tc.forceHTTPS,
+					Checksum:   tbnapi.Checksum{Checksum: "ajsdfhdsljfh"},
+				}
+				if tc.forceHTTPSRedirect {
+					domain.Redirects = append(
+						tbnapi.Redirects{
+							{
+								Name:         "force-https",
+								From:         "(.*)",
+								To:           "https://$host$1",
+								RedirectType: tbnapi.PermanentRedirect,
+							},
+						},
+					)
+				}
+				if tc.sslConfig {
+					domain.SSLConfig = &tbnapi.SSLConfig{}
+				}
+
+				domainCfg := domainConfig{Domain: domain}
+				actual, _ := resolveTLSRequirement(domainCfg)
+				assert.Equal(t, actual, tc.expected)
+			},
+		)
+	}
 }
 
 func TestEmptyRoutes(t *testing.T) {
