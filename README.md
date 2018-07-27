@@ -67,11 +67,23 @@ configuration as follows:
 - **Access Logging (ALS)** is configured, and Rotor can send request
   metrics to Prometheus, statsd, dogstatsd, and/or Wavefront.
 
-With an API key, Rotor acts as the management bastion for
-[Houston](https://turbinelabs.io). It provides a highly customizable control
-plane for Envoy, including full control over domains, routes, and cluster
-behavior. For more information, see the section below on
-[adding an API key](#api-key).
+For better control over the routes and listeners that Rotor sets up, there are two options:
+
+- Define static listeners and routes in a config file via the
+  `ROTOR_XDS_STATIC_RESOURCES_FILENAME` environment variable. Rotor will serve
+  these "dynamic" routes over RDS and LDS. To change these routes, update the
+  file and restart Rotor. More information and examples in
+  [this blog post](https://blog.turbinelabs.io/rotor-a-complete-control-plane-for-envoy-294acb3fc92).
+- Add an an API key for [Houston](https://turbinelabs.io). This allows Rotor to
+  pull routes from Houston, provides full control over domains, routes, and
+  cluster behavior via Houston's UI and API. For more information, see the
+  section below on [adding an API key](#api-key).
+
+For control over cluster features like circuit breaking, gRPC, and static
+clusters, Rotor can also read either a set of static clusters or a cluster
+template from the same `ROTOR_XDS_STATIC_RESOURCES_FILENAME` file. See an
+example of setting up gRPC and static clusters on
+[the Turbine Labs blog](https://blog.turbinelabs.io/rotor-a-complete-control-plane-for-envoy-294acb3fc92).
 
 ## Installation
 
