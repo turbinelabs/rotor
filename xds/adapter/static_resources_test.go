@@ -319,8 +319,7 @@ func TestResFromFlagsMakeJSON(t *testing.T) {
 }
 
 func TestResFromFlagsMakeYAML(t *testing.T) {
-	yaml := `---
-cluster_template:
+	yaml := `cluster_template:
   type: EDS
   edsClusterConfig:
     edsConfig:
@@ -374,7 +373,11 @@ listeners:
         http_filters:
         - name: envoy.router
           config: {}`
+	testResFromFlagsMakeYAML(t, yaml)
+	testResFromFlagsMakeYAML(t, "---\n"+yaml)
+}
 
+func testResFromFlagsMakeYAML(t *testing.T, yaml string) {
 	file, close := tempfile.Write(t, yaml)
 	defer close()
 
