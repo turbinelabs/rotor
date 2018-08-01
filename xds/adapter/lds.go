@@ -458,13 +458,13 @@ func (s lds) mkHTTPConnectionManager(
 	}, nil
 }
 
-func mkSNIDomainsAndTLSContext(domains tbnapi.Domains) ([]string, *envoyauth.DownstreamTlsContext) {
-	var sniDomains []string
+func mkServerNamesAndTLSContext(domains tbnapi.Domains) ([]string, *envoyauth.DownstreamTlsContext) {
+	var serverNames []string
 	var certs []*envoyauth.TlsCertificate
 
 	for _, d := range domains {
 		if d.SSLConfig != nil {
-			sniDomains = append(sniDomains, d.Name)
+			serverNames = append(serverNames, d.Name)
 			for _, pair := range d.SSLConfig.CertKeyPairs {
 				certs = append(certs, &envoyauth.TlsCertificate{
 					CertificateChain: mkFileDataSource(pair.CertificatePath),
@@ -483,7 +483,7 @@ func mkSNIDomainsAndTLSContext(domains tbnapi.Domains) ([]string, *envoyauth.Dow
 		}
 	}
 
-	return sniDomains, tlsContext
+	return serverNames, tlsContext
 }
 
 func (s lds) mkListener(
@@ -507,17 +507,25 @@ func (s lds) mkListener(
 		return nil, err
 	}
 
-	sniDomains, tlsContext := mkSNIDomainsAndTLSContext(domains)
+	serverNames, tlsContext := mkServerNamesAndTLSContext(domains)
+	var lfs []envoylistener.ListenerFilter
+	if len(serverNames) > 0 {
+		lfs = append(lfs, envoylistener.ListenerFilter{
+			Name:   "envoy.listener.tls_inspector",
+			Config: &types.Struct{},
+		})
+	}
 
 	addr := mkEnvoyAddress("0.0.0.0", port)
 
 	return &envoyapi.Listener{
-		Name:    name,
-		Address: *addr,
+		Name:            name,
+		Address:         *addr,
+		ListenerFilters: lfs,
 		FilterChains: []envoylistener.FilterChain{
 			{
 				FilterChainMatch: &envoylistener.FilterChainMatch{
-					SniDomains: sniDomains,
+					ServerNames: serverNames,
 				},
 				TlsContext: tlsContext,
 				Filters: []envoylistener.Filter{
