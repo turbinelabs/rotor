@@ -155,7 +155,7 @@ func TestAllPortsRequest(t *testing.T) {
 			{
 				Name:         "go_away",
 				From:         "(.*)",
-				To:           "https://$host",
+				To:           "http://$host",
 				RedirectType: tbnapi.PermanentRedirect,
 				HeaderConstraints: tbnapi.HeaderConstraints{{
 					Name:   "X-Crazy-Header",
@@ -200,7 +200,7 @@ func TestAllPortsRequest(t *testing.T) {
 		tbnapi.Redirect{
 			Name:         "tbnctl-guide",
 			From:         "/docs/versions/1.0/guides/tbnctl-guide",
-			To:           "https://$host/guides/tbnctlguide.html#somewhere",
+			To:           "http://$host/guides/tbnctlguide.html#somewhere",
 			RedirectType: tbnapi.TemporaryRedirect,
 		},
 		tbnapi.Redirect{
@@ -211,7 +211,7 @@ func TestAllPortsRequest(t *testing.T) {
 		tbnapi.Redirect{
 			Name:         "super broken!",
 			From:         "/api-explorer(.*)",
-			To:           "https://explorer.turbinelabs.io/api-explorer$1",
+			To:           "http://explorer.turbinelabs.io/api-explorer$1",
 			RedirectType: tbnapi.TemporaryRedirect,
 		},
 		tbnapi.Redirect{
@@ -231,7 +231,7 @@ func TestAllPortsRequest(t *testing.T) {
 		tbnapi.Redirect{
 			Name:         "docs-versions-v1",
 			From:         "/docs/versions/1.0(.*)",
-			To:           "https://$host/",
+			To:           "http://$host/",
 			RedirectType: tbnapi.TemporaryRedirect,
 		},
 	)
@@ -271,7 +271,8 @@ func TestAllPortsRequest(t *testing.T) {
 							},
 							Action: &envoyroute.Route_Redirect{
 								Redirect: &envoyroute.RedirectAction{
-									HostRedirect: "duckduckgo.com",
+									HostRedirect:  "duckduckgo.com",
+									HttpsRedirect: true,
 								},
 							},
 						},
@@ -326,7 +327,8 @@ func TestAllPortsRequest(t *testing.T) {
 							},
 							Action: &envoyroute.Route_Redirect{
 								Redirect: &envoyroute.RedirectAction{
-									HostRedirect: "www.turbinelabs.io",
+									HostRedirect:  "www.turbinelabs.io",
+									HttpsRedirect: true,
 								},
 							},
 						},

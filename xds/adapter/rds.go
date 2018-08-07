@@ -360,6 +360,9 @@ func tbnRedirectToEnvoyRoutes(domain tbnapi.Domain) []envoyroute.Route {
 			HostRedirect: scrubCaptureGroups(redirectHost),
 			ResponseCode: responseCode,
 		}
+		if url.Scheme == "https" {
+			redirectAction.HttpsRedirect = true
+		}
 
 		pathRewrite := scrubCaptureGroups(path)
 		if pathRewrite != "" {
