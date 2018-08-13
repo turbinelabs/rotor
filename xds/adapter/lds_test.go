@@ -31,6 +31,7 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 
+	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/rotor/xds/log"
 	"github.com/turbinelabs/rotor/xds/poller"
 	"github.com/turbinelabs/test/assert"
@@ -316,6 +317,415 @@ func TestEmptyRequestSeveralDomains(t *testing.T) {
 			},
 		},
 	}
+	checkListeners(t, resources, expectedEnvoyListeners)
+}
+
+func TestEmptyRequestSeveralDomainsOnePort(t *testing.T) {
+	objects := &poller.Objects{
+		Zone: api.Zone{
+			ZoneKey: "Z0",
+			Name:    "the-zone",
+		},
+		Proxy: api.Proxy{
+			ProxyKey:   "P0",
+			ZoneKey:    "Z0",
+			Name:       "main-test-proxy",
+			DomainKeys: []api.DomainKey{"D0", "D1"},
+		},
+		Clusters: []api.Cluster{
+			{
+				ClusterKey: "C0",
+				ZoneKey:    "Z0",
+				Name:       "the-cluster",
+				Instances:  []api.Instance{{Host: "1.2.3.4", Port: 1234}},
+			},
+		},
+		Domains: api.Domains{
+			{
+				DomainKey: "D0",
+				ZoneKey:   "Z0",
+				Name:      "foo.example.com",
+				Port:      8080,
+			},
+			{
+				DomainKey: "D1",
+				ZoneKey:   "Z0",
+				Name:      "bar.example.com",
+				Port:      8080,
+			},
+		},
+		Routes: []api.Route{
+			{
+				RouteKey:       "R0",
+				DomainKey:      "D0",
+				ZoneKey:        "Z0",
+				Path:           "/foo",
+				SharedRulesKey: "SRK-0",
+			},
+			{
+				RouteKey:       "R0",
+				DomainKey:      "D1",
+				ZoneKey:        "Z0",
+				Path:           "/bar",
+				SharedRulesKey: "SRK-0",
+			},
+		},
+		SharedRules: []api.SharedRules{
+			{
+				SharedRulesKey: "SRK-0",
+				Name:           "SRK-0",
+				ZoneKey:        "Z0",
+			},
+		},
+	}
+
+	s := lds{}
+
+	resources, err := s.adapt(objects)
+
+	assert.Equal(t, resources.Version, objects.TerribleHash())
+	assert.Nil(t, err)
+	assert.NonNil(t, resources.Items)
+
+	httpConnMgr8080, err := s.mkHTTPConnectionManager("main-test-proxy", 8080, nil)
+	assert.Nil(t, err)
+
+	httpFilter8080, err := util.MessageToStruct(httpConnMgr8080)
+	assert.Nil(t, err)
+
+	expectedEnvoyListeners := []envoyapi.Listener{
+		{
+			Name: "main-test-proxy:8080",
+			Address: envoycore.Address{
+				Address: &envoycore.Address_SocketAddress{
+					SocketAddress: &envoycore.SocketAddress{
+						Protocol: envoycore.TCP,
+						Address:  "0.0.0.0",
+						PortSpecifier: &envoycore.SocketAddress_PortValue{
+							PortValue: 8080,
+						},
+					},
+				},
+			},
+			FilterChains: []envoylistener.FilterChain{
+				{
+					FilterChainMatch: &envoylistener.FilterChainMatch{
+						ServerNames: []string{"foo.example.com", "bar.example.com"},
+					},
+					Filters: []envoylistener.Filter{
+						{
+							Name:   util.HTTPConnectionManager,
+							Config: httpFilter8080,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	checkListeners(t, resources, expectedEnvoyListeners)
+}
+
+func TestEmptyRequestSeveralDomainsOnePortSSL(t *testing.T) {
+	objects := &poller.Objects{
+		Zone: api.Zone{
+			ZoneKey: "Z0",
+			Name:    "the-zone",
+		},
+		Proxy: api.Proxy{
+			ProxyKey:   "P0",
+			ZoneKey:    "Z0",
+			Name:       "main-test-proxy",
+			DomainKeys: []api.DomainKey{"D0", "D1"},
+		},
+		Clusters: []api.Cluster{
+			{
+				ClusterKey: "C0",
+				ZoneKey:    "Z0",
+				Name:       "the-cluster",
+				Instances:  []api.Instance{{Host: "1.2.3.4", Port: 1234}},
+			},
+		},
+		Domains: api.Domains{
+			{
+				DomainKey: "D0",
+				ZoneKey:   "Z0",
+				Name:      "foo.example.com",
+				Port:      8443,
+				SSLConfig: &api.SSLConfig{
+					CipherFilter: "HIGH:" + api.DefaultCipherFilter,
+					Protocols:    nil,
+					CertKeyPairs: []api.CertKeyPathPair{{
+						// these come from http://fm4dd.com/openssl/certexamples.htm
+						CertificatePath: "/rotor/xds/poller/example-com.crt",
+						KeyPath:         "/rotor/xds/poller/example-com.key",
+					}},
+				},
+			},
+			{
+				DomainKey: "D1",
+				ZoneKey:   "Z0",
+				Name:      "bar.example.com",
+				Port:      8443,
+				SSLConfig: &api.SSLConfig{
+					CipherFilter: "HIGH:" + api.DefaultCipherFilter,
+					Protocols:    nil,
+					CertKeyPairs: []api.CertKeyPathPair{{
+						// these come from http://fm4dd.com/openssl/certexamples.htm
+						CertificatePath: "/rotor/xds/poller/example-com.crt",
+						KeyPath:         "/rotor/xds/poller/example-com.key",
+					}},
+				},
+			},
+		},
+		Routes: []api.Route{
+			{
+				RouteKey:       "R0",
+				DomainKey:      "D0",
+				ZoneKey:        "Z0",
+				Path:           "/foo",
+				SharedRulesKey: "SRK-0",
+			},
+			{
+				RouteKey:       "R0",
+				DomainKey:      "D1",
+				ZoneKey:        "Z0",
+				Path:           "/bar",
+				SharedRulesKey: "SRK-0",
+			},
+		},
+		SharedRules: []api.SharedRules{
+			{
+				SharedRulesKey: "SRK-0",
+				Name:           "SRK-0",
+				ZoneKey:        "Z0",
+			},
+		},
+	}
+
+	s := lds{}
+
+	resources, err := s.adapt(objects)
+
+	assert.Equal(t, resources.Version, objects.TerribleHash())
+	assert.Nil(t, err)
+	assert.NonNil(t, resources.Items)
+
+	httpConnMgr8443, err := s.mkHTTPConnectionManager("main-test-proxy", 8443, nil)
+	assert.Nil(t, err)
+
+	httpFilter8443, err := util.MessageToStruct(httpConnMgr8443)
+	assert.Nil(t, err)
+
+	expectedEnvoyListeners := []envoyapi.Listener{
+		{
+			Name: "main-test-proxy:8443",
+			Address: envoycore.Address{
+				Address: &envoycore.Address_SocketAddress{
+					SocketAddress: &envoycore.SocketAddress{
+						Protocol: envoycore.TCP,
+						Address:  "0.0.0.0",
+						PortSpecifier: &envoycore.SocketAddress_PortValue{
+							PortValue: 8443,
+						},
+					},
+				},
+			},
+			ListenerFilters: []envoylistener.ListenerFilter{
+				{
+					Name:   "envoy.listener.tls_inspector",
+					Config: &types.Struct{},
+				},
+			},
+			FilterChains: []envoylistener.FilterChain{
+				{
+					FilterChainMatch: &envoylistener.FilterChainMatch{
+						ServerNames: []string{"foo.example.com"},
+					},
+					TlsContext: &envoyauth.DownstreamTlsContext{
+						CommonTlsContext: &envoyauth.CommonTlsContext{
+							TlsCertificates: []*envoyauth.TlsCertificate{
+								{
+									CertificateChain: mkFileDataSource("/rotor/xds/poller/example-com.crt"),
+									PrivateKey:       mkFileDataSource("/rotor/xds/poller/example-com.key"),
+								},
+							},
+						},
+					},
+					Filters: []envoylistener.Filter{
+						{
+							Name:   util.HTTPConnectionManager,
+							Config: httpFilter8443,
+						},
+					},
+				},
+				{
+					FilterChainMatch: &envoylistener.FilterChainMatch{
+						ServerNames: []string{"bar.example.com"},
+					},
+					TlsContext: &envoyauth.DownstreamTlsContext{
+						CommonTlsContext: &envoyauth.CommonTlsContext{
+							TlsCertificates: []*envoyauth.TlsCertificate{
+								{
+									CertificateChain: mkFileDataSource("/rotor/xds/poller/example-com.crt"),
+									PrivateKey:       mkFileDataSource("/rotor/xds/poller/example-com.key"),
+								},
+							},
+						},
+					},
+					Filters: []envoylistener.Filter{
+						{
+							Name:   util.HTTPConnectionManager,
+							Config: httpFilter8443,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	checkListeners(t, resources, expectedEnvoyListeners)
+}
+
+func TestEmptyRequestSeveralDomainsOnePortMixed(t *testing.T) {
+	objects := &poller.Objects{
+		Zone: api.Zone{
+			ZoneKey: "Z0",
+			Name:    "the-zone",
+		},
+		Proxy: api.Proxy{
+			ProxyKey:   "P0",
+			ZoneKey:    "Z0",
+			Name:       "main-test-proxy",
+			DomainKeys: []api.DomainKey{"D0", "D1"},
+		},
+		Clusters: []api.Cluster{
+			{
+				ClusterKey: "C0",
+				ZoneKey:    "Z0",
+				Name:       "the-cluster",
+				Instances:  []api.Instance{{Host: "1.2.3.4", Port: 1234}},
+			},
+		},
+		Domains: api.Domains{
+			{
+				DomainKey: "D0",
+				ZoneKey:   "Z0",
+				Name:      "foo.example.com",
+				Port:      8443,
+				SSLConfig: &api.SSLConfig{
+					CipherFilter: "HIGH:" + api.DefaultCipherFilter,
+					Protocols:    nil,
+					CertKeyPairs: []api.CertKeyPathPair{{
+						// these come from http://fm4dd.com/openssl/certexamples.htm
+						CertificatePath: "/rotor/xds/poller/example-com.crt",
+						KeyPath:         "/rotor/xds/poller/example-com.key",
+					}},
+				},
+			},
+			{
+				DomainKey: "D0",
+				ZoneKey:   "Z0",
+				Name:      "bar.example.com",
+				Port:      8443,
+			},
+		},
+		Routes: []api.Route{
+			{
+				RouteKey:       "R0",
+				DomainKey:      "D0",
+				ZoneKey:        "Z0",
+				Path:           "/foo",
+				SharedRulesKey: "SRK-0",
+			},
+			{
+				RouteKey:       "R0",
+				DomainKey:      "D1",
+				ZoneKey:        "Z0",
+				Path:           "/bar",
+				SharedRulesKey: "SRK-0",
+			},
+		},
+		SharedRules: []api.SharedRules{
+			{
+				SharedRulesKey: "SRK-0",
+				Name:           "SRK-0",
+				ZoneKey:        "Z0",
+			},
+		},
+	}
+
+	s := lds{}
+
+	resources, err := s.adapt(objects)
+
+	assert.Equal(t, resources.Version, objects.TerribleHash())
+	assert.Nil(t, err)
+	assert.NonNil(t, resources.Items)
+
+	httpConnMgr8443, err := s.mkHTTPConnectionManager("main-test-proxy", 8443, nil)
+	assert.Nil(t, err)
+
+	httpFilter8443, err := util.MessageToStruct(httpConnMgr8443)
+	assert.Nil(t, err)
+
+	expectedEnvoyListeners := []envoyapi.Listener{
+		{
+			Name: "main-test-proxy:8443",
+			Address: envoycore.Address{
+				Address: &envoycore.Address_SocketAddress{
+					SocketAddress: &envoycore.SocketAddress{
+						Protocol: envoycore.TCP,
+						Address:  "0.0.0.0",
+						PortSpecifier: &envoycore.SocketAddress_PortValue{
+							PortValue: 8443,
+						},
+					},
+				},
+			},
+			ListenerFilters: []envoylistener.ListenerFilter{
+				{
+					Name:   "envoy.listener.tls_inspector",
+					Config: &types.Struct{},
+				},
+			},
+			FilterChains: []envoylistener.FilterChain{
+				{
+					FilterChainMatch: &envoylistener.FilterChainMatch{
+						ServerNames: []string{"bar.example.com"},
+					},
+					Filters: []envoylistener.Filter{
+						{
+							Name:   util.HTTPConnectionManager,
+							Config: httpFilter8443,
+						},
+					},
+				},
+				{
+					FilterChainMatch: &envoylistener.FilterChainMatch{
+						ServerNames: []string{"foo.example.com"},
+					},
+					TlsContext: &envoyauth.DownstreamTlsContext{
+						CommonTlsContext: &envoyauth.CommonTlsContext{
+							TlsCertificates: []*envoyauth.TlsCertificate{
+								{
+									CertificateChain: mkFileDataSource("/rotor/xds/poller/example-com.crt"),
+									PrivateKey:       mkFileDataSource("/rotor/xds/poller/example-com.key"),
+								},
+							},
+						},
+					},
+					Filters: []envoylistener.Filter{
+						{
+							Name:   util.HTTPConnectionManager,
+							Config: httpFilter8443,
+						},
+					},
+				},
+			},
+		},
+	}
+
 	checkListeners(t, resources, expectedEnvoyListeners)
 }
 

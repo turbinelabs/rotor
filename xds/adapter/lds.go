@@ -458,74 +458,65 @@ func (s lds) mkHTTPConnectionManager(
 	}, nil
 }
 
-func mkServerNamesAndTLSContext(domains tbnapi.Domains) ([]string, *envoyauth.DownstreamTlsContext) {
-	var serverNames []string
-	var certs []*envoyauth.TlsCertificate
-
-	for _, d := range domains {
-		if d.SSLConfig != nil {
-			serverNames = append(serverNames, d.Name)
-			for _, pair := range d.SSLConfig.CertKeyPairs {
-				certs = append(certs, &envoyauth.TlsCertificate{
-					CertificateChain: mkFileDataSource(pair.CertificatePath),
-					PrivateKey:       mkFileDataSource(pair.KeyPath),
-				})
-			}
-		}
-	}
-
-	var tlsContext *envoyauth.DownstreamTlsContext
-	if len(certs) > 0 {
-		tlsContext = &envoyauth.DownstreamTlsContext{
-			CommonTlsContext: &envoyauth.CommonTlsContext{
-				TlsCertificates: certs,
-			},
-		}
-	}
-
-	return serverNames, tlsContext
-}
-
 func (s lds) mkListener(
 	proxy tbnapi.Proxy,
 	port int,
 	domains tbnapi.Domains,
 	listener *tbnapi.Listener,
 ) (*envoyapi.Listener, error) {
+	// non-SSL domains for a given listener must all go in a single HTTP connection manager
 	name := mkListenerName(proxy.Name, port)
+
 	tracingConfig, err := s.mkTracingConfig(listener)
 	if err != nil {
 		return nil, err
 	}
-	httpConnManager, err := s.mkHTTPConnectionManager(proxy.Name, port, tracingConfig)
-	if err != nil {
-		return nil, err
-	}
 
-	httpFilter, err := util.MessageToStruct(httpConnManager)
-	if err != nil {
-		return nil, err
-	}
-
-	serverNames, tlsContext := mkServerNamesAndTLSContext(domains)
 	var lfs []envoylistener.ListenerFilter
-	if len(serverNames) > 0 {
-		lfs = append(lfs, envoylistener.ListenerFilter{
-			Name:   "envoy.listener.tls_inspector",
-			Config: &types.Struct{},
-		})
-	}
+	var nonSSLFilterChains []envoylistener.FilterChain
+	var sslFilterChains []envoylistener.FilterChain
 
-	addr := mkEnvoyAddress("0.0.0.0", port)
+	for _, d := range domains {
+		var tlsContext *envoyauth.DownstreamTlsContext
 
-	return &envoyapi.Listener{
-		Name:            name,
-		Address:         *addr,
-		ListenerFilters: lfs,
-		FilterChains: []envoylistener.FilterChain{
-			{
+		if d.SSLConfig != nil {
+			var certs []*envoyauth.TlsCertificate
+
+			if len(lfs) == 0 {
+				lfs = append(lfs, envoylistener.ListenerFilter{
+					Name:   "envoy.listener.tls_inspector",
+					Config: &types.Struct{},
+				})
+			}
+
+			for _, pair := range d.SSLConfig.CertKeyPairs {
+				certs = append(certs, &envoyauth.TlsCertificate{
+					CertificateChain: mkFileDataSource(pair.CertificatePath),
+					PrivateKey:       mkFileDataSource(pair.KeyPath),
+				})
+			}
+
+			if len(certs) > 0 {
+				tlsContext = &envoyauth.DownstreamTlsContext{
+					CommonTlsContext: &envoyauth.CommonTlsContext{
+						TlsCertificates: certs,
+					},
+				}
+			}
+
+			httpConnManager, err := s.mkHTTPConnectionManager(proxy.Name, port, tracingConfig)
+			if err != nil {
+				return nil, err
+			}
+
+			httpFilter, err := util.MessageToStruct(httpConnManager)
+			if err != nil {
+				return nil, err
+			}
+
+			sslFilterChains = append(sslFilterChains, envoylistener.FilterChain{
 				FilterChainMatch: &envoylistener.FilterChainMatch{
-					ServerNames: serverNames,
+					ServerNames: []string{d.Name},
 				},
 				TlsContext: tlsContext,
 				Filters: []envoylistener.Filter{
@@ -534,8 +525,53 @@ func (s lds) mkListener(
 						Config: httpFilter,
 					},
 				},
-			},
-		},
+			})
+		} else if len(nonSSLFilterChains) == 0 {
+			httpConnManager, err := s.mkHTTPConnectionManager(proxy.Name, port, tracingConfig)
+			if err != nil {
+				return nil, err
+			}
+
+			httpFilter, err := util.MessageToStruct(httpConnManager)
+			if err != nil {
+				return nil, err
+			}
+
+			nonSSLFilterChains = append(nonSSLFilterChains, envoylistener.FilterChain{
+				FilterChainMatch: &envoylistener.FilterChainMatch{
+					ServerNames: []string{d.Name},
+				},
+				Filters: []envoylistener.Filter{
+					{
+						Name:   util.HTTPConnectionManager,
+						Config: httpFilter,
+					},
+				},
+			})
+		} else {
+			nonSSLFilterChains[0].FilterChainMatch.ServerNames = append(
+				nonSSLFilterChains[0].FilterChainMatch.ServerNames,
+				d.Name,
+			)
+		}
+	}
+
+	// Envoy doesn't allow a FilterChain for non-SSL ServerNames to explicitly
+	// list the ServerNames unless there is also at least one FilterChain
+	// corresponding to an SSL ServerName on the same port.
+	if len(nonSSLFilterChains) > 0 &&
+		len(sslFilterChains) == 0 &&
+		len(nonSSLFilterChains[0].FilterChainMatch.ServerNames) < 2 {
+		nonSSLFilterChains[0].FilterChainMatch.ServerNames = nil
+	}
+
+	addr := mkEnvoyAddress("0.0.0.0", port)
+
+	return &envoyapi.Listener{
+		Name:            name,
+		Address:         *addr,
+		ListenerFilters: lfs,
+		FilterChains:    append(nonSSLFilterChains, sslFilterChains...),
 	}, nil
 }
 
