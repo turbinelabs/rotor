@@ -63,14 +63,83 @@ func TestStandaloneDifferPatch(t *testing.T) {
 	}
 
 	diffs := []Diff{
-		NewDiffCreate(api.Cluster{Name: "C1"}),
 		NewDiffCreate(api.Cluster{Name: "C2"}),
 		NewDiffCreate(api.Cluster{Name: "C3"}),
+		NewDiffCreate(api.Cluster{
+			Name: "C1",
+			Instances: api.Instances{
+				{
+					Host: "b",
+					Port: 1,
+				},
+				{
+					Host: "a",
+					Port: 2,
+				},
+				{
+					Host: "a",
+					Port: 1,
+					Metadata: api.Metadata{
+						{
+							Key:   "z-key",
+							Value: "z-value",
+						},
+						{
+							Key:   "j-key",
+							Value: "j-value",
+						},
+						{
+							Key:   "m-key",
+							Value: "m-value",
+						},
+						{
+							Key:   "a-key",
+							Value: "a-value",
+						},
+					},
+				},
+			},
+		}),
 	}
 
 	want := &poller.Objects{
 		Clusters: api.Clusters{
-			{ClusterKey: "C1", Name: "C1"},
+			{
+				ClusterKey: "C1",
+				Name:       "C1",
+				Instances: api.Instances{
+					{
+						Host: "a",
+						Port: 1,
+						Metadata: api.Metadata{
+							{
+								Key:   "a-key",
+								Value: "a-value",
+							},
+							{
+								Key:   "j-key",
+								Value: "j-value",
+							},
+							{
+								Key:   "m-key",
+								Value: "m-value",
+							},
+							{
+								Key:   "z-key",
+								Value: "z-value",
+							},
+						},
+					},
+					{
+						Host: "a",
+						Port: 2,
+					},
+					{
+						Host: "b",
+						Port: 1,
+					},
+				},
+			},
 			{ClusterKey: "C2", Name: "C2"},
 			{ClusterKey: "C3", Name: "C3"},
 		},
@@ -147,6 +216,7 @@ func TestStandaloneDifferPatch(t *testing.T) {
 	consumer.EXPECT().Consume(captor)
 	err := sd.Patch(diffs)
 	assert.DeepEqual(t, captor.V.(*poller.Objects), want)
+	assert.DeepEqual(t, captor.V.(*poller.Objects).TerribleHash(), "2PJtNkjr37yyU54f697pLw==")
 	assert.Nil(t, err)
 }
 

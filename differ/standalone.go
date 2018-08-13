@@ -18,6 +18,7 @@ package differ
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/rotor/xds/poller"
@@ -74,37 +75,52 @@ func (d standaloneDiffer) Patch(diffs []Diff) error {
 		case *diffCreate:
 			c := t.cluster
 
+			// protect against randomness in collection (this isn't a problem when
+			// storing/retrieving clusters in the Houston API, because the metadata
+			// comes back from the API in a reliable order, but here we don't have the
+			// API to sanitize for us.)
+			sort.Sort(api.InstancesByHostPort(c.Instances))
+			for j := range c.Instances {
+				sort.Sort(api.MetadataByKey(c.Instances[j].Metadata))
+			}
+
 			ck := api.ClusterKey(c.Name)
 			c.ClusterKey = ck
-
-			dom := api.Domain{Name: c.Name, Port: d.port}
-			dom.DomainKey = api.DomainKey(dom.Addr())
-			dks[i] = dom.DomainKey
-
-			srk := api.SharedRulesKey(c.Name)
-
 			objs.Clusters[i] = c
-			objs.Domains[i] = dom
-			objs.Routes[i] = api.Route{
-				RouteKey:       api.RouteKey(fmt.Sprintf("%s/", dom.DomainKey)),
-				DomainKey:      dom.DomainKey,
-				Path:           "/",
-				SharedRulesKey: srk,
-			}
-			objs.SharedRules[i] = api.SharedRules{
-				SharedRulesKey: srk,
-				Default: api.AllConstraints{
-					Light: api.ClusterConstraints{
-						{
-							ClusterKey: ck,
-							Weight:     1,
-						},
-					},
-				},
-			}
 
 		default:
 			return fmt.Errorf("unexpected Diff type: %T", t)
+		}
+	}
+
+	// And again with the stable ordering. The various other objects take their
+	// order from the cluster order, so sort by name.
+	sort.Sort(api.ClusterByName(objs.Clusters))
+
+	for i, c := range objs.Clusters {
+		dom := api.Domain{Name: c.Name, Port: d.port}
+		dom.DomainKey = api.DomainKey(dom.Addr())
+		dks[i] = dom.DomainKey
+
+		srk := api.SharedRulesKey(c.Name)
+
+		objs.Domains[i] = dom
+		objs.Routes[i] = api.Route{
+			RouteKey:       api.RouteKey(fmt.Sprintf("%s/", dom.DomainKey)),
+			DomainKey:      dom.DomainKey,
+			Path:           "/",
+			SharedRulesKey: srk,
+		}
+		objs.SharedRules[i] = api.SharedRules{
+			SharedRulesKey: srk,
+			Default: api.AllConstraints{
+				Light: api.ClusterConstraints{
+					{
+						ClusterKey: c.ClusterKey,
+						Weight:     1,
+					},
+				},
+			},
 		}
 	}
 
