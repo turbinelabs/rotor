@@ -269,33 +269,17 @@ func mkEnvoyCorsPolicy(corsConfig *tbnapi.CorsConfig) *envoyroute.CorsPolicy {
 }
 
 // Envoy honors XFP headers when enforcing TLS so we translate https redirects
-// by specifying a requirement other than VirtualHost_NONE and also remove the
-// redirect from the provided domainConfig since it's encoded in the returned
-// TlsRequirement. If we don't have an SSLConfig configured, we only trust
-// "internal requests" as specified by RFC-1918.
+// by specifying a requirement other than VirtualHost_NONE. If we don't have an SSLConfig
+// configured, we only trust "internal requests" as specified by RFC-1918.
 func resolveTLSRequirement(
 	domainCfg domainConfig,
 ) (envoyroute.VirtualHost_TlsRequirementType, domainConfig) {
-	shouldRedirectHTTP := false
-	if domainCfg.Domain.ForceHTTPS {
-		shouldRedirectHTTP = true
-	}
-	cleanRedirects := []tbnapi.Redirect{}
-	for _, rd := range domainCfg.Domain.Redirects {
-		if isHTTPSRedirect(domainCfg.Domain.Name, rd) {
-			shouldRedirectHTTP = true
-		} else {
-			cleanRedirects = append(cleanRedirects, rd)
-		}
-	}
-	domainCfg.Domain.Redirects = cleanRedirects
-
 	var tlsReq envoyroute.VirtualHost_TlsRequirementType
 	switch {
-	case shouldRedirectHTTP && domainCfg.Domain.SSLConfig == nil:
-		tlsReq = envoyroute.VirtualHost_EXTERNAL_ONLY
 	case domainCfg.Domain.SSLConfig != nil:
 		tlsReq = envoyroute.VirtualHost_ALL
+	case domainCfg.Domain.ForceHTTPS:
+		tlsReq = envoyroute.VirtualHost_EXTERNAL_ONLY
 	default:
 		tlsReq = envoyroute.VirtualHost_NONE
 	}

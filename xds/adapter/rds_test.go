@@ -68,27 +68,21 @@ func checkRouteConfigurations(
 
 func TestResolveTLSRequirement(t *testing.T) {
 	trueTestCases := []struct {
-		forceHTTPS         bool
-		forceHTTPSRedirect bool
-		sslConfig          bool
-		expected           envoyroute.VirtualHost_TlsRequirementType
+		forceHTTPS bool
+		sslConfig  bool
+		expected   envoyroute.VirtualHost_TlsRequirementType
 	}{
-		{true, true, true, envoyroute.VirtualHost_ALL},
-		{true, true, false, envoyroute.VirtualHost_EXTERNAL_ONLY},
-		{true, false, true, envoyroute.VirtualHost_ALL},
-		{true, false, false, envoyroute.VirtualHost_EXTERNAL_ONLY},
-		{false, true, true, envoyroute.VirtualHost_ALL},
-		{false, true, false, envoyroute.VirtualHost_EXTERNAL_ONLY},
-		{false, false, true, envoyroute.VirtualHost_ALL},
-		{false, false, false, envoyroute.VirtualHost_NONE},
+		{true, true, envoyroute.VirtualHost_ALL},
+		{true, false, envoyroute.VirtualHost_EXTERNAL_ONLY},
+		{false, true, envoyroute.VirtualHost_ALL},
+		{false, false, envoyroute.VirtualHost_NONE},
 	}
 
 	for _, tc := range trueTestCases {
 		assert.Group(
 			fmt.Sprintf(
-				"forceHTTPS %s, forceHTTPSRedirect %s, sslConfig %s",
+				"forceHTTPS %s, sslConfig %s",
 				strconv.FormatBool(tc.forceHTTPS),
-				strconv.FormatBool(tc.forceHTTPSRedirect),
 				strconv.FormatBool(tc.sslConfig)),
 			t,
 			func(g *assert.G) {
@@ -99,18 +93,6 @@ func TestResolveTLSRequirement(t *testing.T) {
 					Port:       8080,
 					ForceHTTPS: tc.forceHTTPS,
 					Checksum:   tbnapi.Checksum{Checksum: "ajsdfhdsljfh"},
-				}
-				if tc.forceHTTPSRedirect {
-					domain.Redirects = append(
-						tbnapi.Redirects{
-							{
-								Name:         "force-https",
-								From:         "(.*)",
-								To:           "https://$host$1",
-								RedirectType: tbnapi.PermanentRedirect,
-							},
-						},
-					)
 				}
 				if tc.sslConfig {
 					domain.SSLConfig = &tbnapi.SSLConfig{}
@@ -146,12 +128,6 @@ func TestAllPortsRequest(t *testing.T) {
 		Name:      "baz.example.com",
 		Port:      8080,
 		Redirects: tbnapi.Redirects{
-			{
-				Name:         "force-https",
-				From:         "(.*)",
-				To:           "https://$host$1",
-				RedirectType: tbnapi.PermanentRedirect,
-			},
 			{
 				Name:         "go_away",
 				From:         "(.*)",
@@ -262,6 +238,28 @@ func TestAllPortsRequest(t *testing.T) {
 						},
 					},
 					Routes: []envoyroute.Route{
+						{
+							Match: envoyroute.RouteMatch{
+								PathSpecifier: &envoyroute.RouteMatch_Regex{
+									Regex: "(.*)",
+								},
+								CaseSensitive: boolValue(false),
+								Headers: []*envoyroute.HeaderMatcher{
+									{
+										Name: "X-Forwarded-Proto",
+										HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
+											RegexMatch: "^((?!https).)*$",
+										},
+									},
+								},
+							},
+							Action: &envoyroute.Route_Redirect{
+								Redirect: &envoyroute.RedirectAction{
+									HostRedirect:  "foo.example.com",
+									HttpsRedirect: true,
+								},
+							},
+						},
 						{
 							Match: envoyroute.RouteMatch{
 								PathSpecifier: &envoyroute.RouteMatch_Regex{
@@ -1316,7 +1314,7 @@ func TestAllPortsRequest(t *testing.T) {
 				{
 					Name:       "baz.example.com-8080",
 					Domains:    []string{"baz.example.com"},
-					RequireTls: envoyroute.VirtualHost_EXTERNAL_ONLY,
+					RequireTls: envoyroute.VirtualHost_NONE,
 					RequestHeadersToAdd: []*envoycore.HeaderValueOption{
 						{
 							Header: &envoycore.HeaderValue{
