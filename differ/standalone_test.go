@@ -216,7 +216,7 @@ func TestStandaloneDifferPatch(t *testing.T) {
 	consumer.EXPECT().Consume(captor)
 	err := sd.Patch(diffs)
 	assert.DeepEqual(t, captor.V.(*poller.Objects), want)
-	assert.DeepEqual(t, captor.V.(*poller.Objects).TerribleHash(), "2PJtNkjr37yyU54f697pLw==")
+	assert.DeepEqual(t, captor.V.(*poller.Objects).TerribleHash(), "C6m5y52ImAU5Eu4+rXYLVA==")
 	assert.Nil(t, err)
 }
 
