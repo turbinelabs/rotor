@@ -6,6 +6,7 @@ package adapter
 import (
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	gomock "github.com/golang/mock/gomock"
+	service "github.com/turbinelabs/api/service"
 	poller "github.com/turbinelabs/rotor/xds/poller"
 	reflect "reflect"
 )
@@ -103,4 +104,59 @@ func (m *mockCachingConsumer) OnFetchResponse(arg0 *v2.DiscoveryRequest, arg1 *v
 // OnFetchResponse indicates an expected call of OnFetchResponse
 func (mr *mockCachingConsumerMockRecorder) OnFetchResponse(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnFetchResponse", reflect.TypeOf((*mockCachingConsumer)(nil).OnFetchResponse), arg0, arg1)
+}
+
+// mockStreamRefsIface is a mock of streamRefsIface interface
+type mockStreamRefsIface struct {
+	ctrl     *gomock.Controller
+	recorder *mockStreamRefsIfaceMockRecorder
+}
+
+// mockStreamRefsIfaceMockRecorder is the mock recorder for mockStreamRefsIface
+type mockStreamRefsIfaceMockRecorder struct {
+	mock *mockStreamRefsIface
+}
+
+// newMockStreamRefsIface creates a new mock instance
+func newMockStreamRefsIface(ctrl *gomock.Controller) *mockStreamRefsIface {
+	mock := &mockStreamRefsIface{ctrl: ctrl}
+	mock.recorder = &mockStreamRefsIfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *mockStreamRefsIface) EXPECT() *mockStreamRefsIfaceMockRecorder {
+	return m.recorder
+}
+
+// Add mocks base method
+func (m *mockStreamRefsIface) Add(streamID int64, ref service.ProxyRef) {
+	m.ctrl.Call(m, "Add", streamID, ref)
+}
+
+// Add indicates an expected call of Add
+func (mr *mockStreamRefsIfaceMockRecorder) Add(streamID, ref interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*mockStreamRefsIface)(nil).Add), streamID, ref)
+}
+
+// Remove mocks base method
+func (m *mockStreamRefsIface) Remove(streamID int64, ref service.ProxyRef) {
+	m.ctrl.Call(m, "Remove", streamID, ref)
+}
+
+// Remove indicates an expected call of Remove
+func (mr *mockStreamRefsIfaceMockRecorder) Remove(streamID, ref interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*mockStreamRefsIface)(nil).Remove), streamID, ref)
+}
+
+// RemoveAll mocks base method
+func (m *mockStreamRefsIface) RemoveAll(streamID int64) []service.ProxyRef {
+	ret := m.ctrl.Call(m, "RemoveAll", streamID)
+	ret0, _ := ret[0].([]service.ProxyRef)
+	return ret0
+}
+
+// RemoveAll indicates an expected call of RemoveAll
+func (mr *mockStreamRefsIfaceMockRecorder) RemoveAll(streamID interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveAll", reflect.TypeOf((*mockStreamRefsIface)(nil).RemoveAll), streamID)
 }

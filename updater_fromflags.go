@@ -37,7 +37,10 @@ import (
 	"github.com/turbinelabs/stats"
 )
 
-const clientApp = apiclient.App("github.com/turbinelabs/rotor")
+const (
+	clientApp  = apiclient.App("github.com/turbinelabs/rotor")
+	deregDelay = 10 * time.Second
+)
 
 // UpdaterFromFlags produces a fully-configured updater.Updater. It differs from
 // updater.FromFlags in that it will also configure the API and potentially an
@@ -242,7 +245,7 @@ func (ff *updaterFromFlags) mkSvcAndXDS() (service.All, adapter.XDS, error) {
 
 	statsClient.AddTags(stats.NewKVTag(stats.ProxyVersionTag, constants.TbnPublicVersion))
 
-	registrar := poller.NewRegistrar(svc)
+	registrar := poller.NewDelayedRegistrar(poller.NewRegistrar(svc), deregDelay)
 	xds, err := ff.xdsFromFlags.Make(registrar)
 	if err != nil {
 		return nil, nil, err

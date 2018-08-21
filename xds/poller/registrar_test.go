@@ -22,10 +22,12 @@ import (
 	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/api/service"
+	"github.com/turbinelabs/nonstdlib/log/console"
 	"github.com/turbinelabs/test/assert"
 )
 
@@ -122,4 +124,90 @@ func TestRegistrarDeregisterNotRegistered(t *testing.T) {
 	reg := NewRegistrar(svc)
 	err := reg.Deregister(pRef, nil)
 	assert.ErrorContains(t, err, `deregister attempt on unregistered proxy: "that-proxy"`)
+}
+
+func TestDelayedRegistrarIntegration(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	svc := service.NewMockAll(ctrl)
+	pRef := service.NewMockProxyRef(ctrl)
+	underlying := NewRegistrar(svc)
+
+	gomock.InOrder(
+		pRef.EXPECT().Get(svc).Return(api.Proxy{}, nil),
+		pRef.EXPECT().MapKey().Return("the-key"),
+		pRef.EXPECT().MapKey().Return("the-key"),
+		pRef.EXPECT().MapKey().Return("the-key"),
+	)
+
+	var wg sync.WaitGroup
+	ifFirst := func(service.All, api.Proxy) {
+		wg.Add(1)
+	}
+	ifLast := func() {
+		wg.Done()
+	}
+
+	reg := NewDelayedRegistrar(underlying, 5*time.Millisecond)
+
+	assert.Nil(t, reg.Register(pRef, ifFirst))
+	assert.Nil(t, reg.Deregister(pRef, ifLast))
+
+	wg.Wait()
+}
+
+func TestDelayedRegistrarRefs(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	underlying := NewMockRegistrar(ctrl)
+	reg := NewDelayedRegistrar(underlying, 0)
+	refs := []service.ProxyRef{
+		service.NewMockProxyRef(ctrl),
+		service.NewMockProxyRef(ctrl),
+	}
+
+	underlying.EXPECT().Refs().Return(refs)
+
+	assert.DeepEqual(t, reg.Refs(), refs)
+}
+
+func TestDelayedRegistrarRegisterErr(t *testing.T) {
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	underlying := NewMockRegistrar(ctrl)
+	reg := NewDelayedRegistrar(underlying, 0)
+	pRef := service.NewMockProxyRef(ctrl)
+
+	underlying.EXPECT().Register(pRef, nil).Return(errors.New("boom"))
+
+	assert.ErrorContains(t, reg.Register(pRef, nil), "boom")
+}
+
+func TestDelayedRegistrarDeregisterErr(t *testing.T) {
+	ch, cleanup := console.ConsumeConsoleLogs(1)
+	defer cleanup()
+
+	ctrl := gomock.NewController(assert.Tracing(t))
+	defer ctrl.Finish()
+
+	underlying := NewMockRegistrar(ctrl)
+	reg := delayedRegistrar{underlying, func(f func()) { f() }}
+	pRef := service.NewMockProxyRef(ctrl)
+
+	gomock.InOrder(
+		pRef.EXPECT().MapKey().Return("the-key"),
+		underlying.EXPECT().Deregister(pRef, nil).Return(errors.New("boom")),
+	)
+
+	assert.Nil(t, reg.Deregister(pRef, nil))
+
+	msg := <-ch
+	assert.Equal(
+		t,
+		msg.Message,
+		"[error] Error deregistering node(the-key): boom\n",
+	)
 }

@@ -21,9 +21,12 @@ package poller
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/api/service"
+	"github.com/turbinelabs/nonstdlib/log/console"
+	tbntime "github.com/turbinelabs/nonstdlib/time"
 )
 
 // Registrar allows consumers to declare what proxies they're interesting in
@@ -58,6 +61,16 @@ func NewRegistrar(svc service.All) Registrar {
 // proxy refs
 func NewNopRegistrar() Registrar {
 	return nopRegistar{}
+}
+
+// NewDelayedRegistrar returns a Registrar that delays Deregistration by the
+// specified interval. Deregeistration failures are logged to console.Error but
+// otherwise ignored.
+func NewDelayedRegistrar(r Registrar, delay time.Duration) Registrar {
+	return delayedRegistrar{
+		Registrar: r,
+		delay:     func(f func()) { tbntime.AfterFunc(delay, f) },
+	}
 }
 
 type nopRegistar struct{ refs []service.ProxyRef }
@@ -139,4 +152,19 @@ func (r *registrar) Refs() []service.ProxyRef {
 	}
 
 	return refs
+}
+
+type delayedRegistrar struct {
+	Registrar
+	delay func(func())
+}
+
+func (r delayedRegistrar) Deregister(pRef service.ProxyRef, ifLast func()) error {
+	k := pRef.MapKey()
+	r.delay(func() {
+		if err := r.Registrar.Deregister(pRef, ifLast); err != nil {
+			console.Error().Printf("Error deregistering node(%s): %s", k, err)
+		}
+	})
+	return nil
 }
