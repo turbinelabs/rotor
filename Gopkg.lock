@@ -71,7 +71,7 @@
     "pkg/server",
     "pkg/util"
   ]
-  revision = "v0.4"
+  revision = "v0.5.0"
 
 [[projects]]
   name = "github.com/gambol99/go-marathon"
@@ -109,7 +109,7 @@
     "sortkeys",
     "types"
   ]
-  revision = "v1.0.0"
+  revision = "v1.1.1"
 
 [[projects]]
   branch = "master"
@@ -456,6 +456,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "38ffa6e5b99b2295692ef9df0fed379c3f52f80112fafb48926bca0a919f7aa4"
+  inputs-digest = "eb1a5d488ff50ff99a3074b9de6f3e5a237fcb52f3b543bb1de37afe8b10f488"
   solver-name = "gps-cdcl"
   solver-version = 1

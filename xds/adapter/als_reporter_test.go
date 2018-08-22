@@ -93,7 +93,7 @@ func TestALSReporterAccessLog(t *testing.T) {
 				Path:      "/ignored-success",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{200},
+				ResponseCode: &types.UInt32Value{Value: 200},
 			},
 		)
 
@@ -104,7 +104,7 @@ func TestALSReporterAccessLog(t *testing.T) {
 				Path:      "/ignored-redirect",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{300},
+				ResponseCode: &types.UInt32Value{Value: 300},
 			},
 		)
 
@@ -115,7 +115,7 @@ func TestALSReporterAccessLog(t *testing.T) {
 				Path:      "/ignored-client-error",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{400},
+				ResponseCode: &types.UInt32Value{Value: 400},
 			},
 		)
 
@@ -128,7 +128,7 @@ func TestALSReporterAccessLog(t *testing.T) {
 				Path:      "/logged-500",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{500},
+				ResponseCode: &types.UInt32Value{Value: 500},
 			},
 		)
 
@@ -140,11 +140,11 @@ func TestALSReporterAccessLog(t *testing.T) {
 			&envoylog.HTTPRequestProperties{
 				Scheme:    "https",
 				Authority: "example.com",
-				Port:      &types.UInt32Value{8080},
+				Port:      &types.UInt32Value{Value: 8080},
 				Path:      "/logged-500",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{500},
+				ResponseCode: &types.UInt32Value{Value: 500},
 			},
 		)
 
@@ -180,7 +180,7 @@ func TestALSReporterUpstreamLog(t *testing.T) {
 				Path:      "/ignored-success",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{200},
+				ResponseCode: &types.UInt32Value{Value: 200},
 			},
 		)
 
@@ -191,7 +191,7 @@ func TestALSReporterUpstreamLog(t *testing.T) {
 				Path:      "/ignored-redirect",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{300},
+				ResponseCode: &types.UInt32Value{Value: 300},
 			},
 		)
 
@@ -202,7 +202,7 @@ func TestALSReporterUpstreamLog(t *testing.T) {
 				Path:      "/ignored-server-error",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{500},
+				ResponseCode: &types.UInt32Value{Value: 500},
 			},
 		)
 
@@ -215,7 +215,7 @@ func TestALSReporterUpstreamLog(t *testing.T) {
 				Path:      "/client-error",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{400},
+				ResponseCode: &types.UInt32Value{Value: 400},
 			},
 		)
 
@@ -243,7 +243,7 @@ func TestALSReporterAccessAndUpstreamLog(t *testing.T) {
 				Path:      "/access",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{200},
+				ResponseCode: &types.UInt32Value{Value: 200},
 			},
 		)
 
@@ -254,7 +254,7 @@ func TestALSReporterAccessAndUpstreamLog(t *testing.T) {
 				Path:      "/upstream",
 			},
 			&envoylog.HTTPResponseProperties{
-				ResponseCode: &types.UInt32Value{201},
+				ResponseCode: &types.UInt32Value{Value: 201},
 			},
 		)
 
@@ -293,7 +293,7 @@ func TestALSReporterLoop(t *testing.T) {
 						Path:      fmt.Sprintf("/logged-%d", r),
 					},
 					&envoylog.HTTPResponseProperties{
-						ResponseCode: &types.UInt32Value{r},
+						ResponseCode: &types.UInt32Value{Value: r},
 					},
 				)
 			}
