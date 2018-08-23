@@ -143,6 +143,7 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 			close(statsSent)
 		})
 	mockStats.EXPECT().Close().Return(nil)
+	mockStats.EXPECT().Event(gomock.Any(), gomock.Any()).MinTimes(1) // responses
 
 	xds, err := NewXDS(
 		":0",

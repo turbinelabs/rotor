@@ -232,13 +232,73 @@ func (a *als) record(metadata *streamMetadata, entry *envoylog.HTTPAccessLogEntr
 	}
 	responseTags := append(tags, stats.NewKVTag(statsapi.StatusCode, fmt.Sprintf("%d", respCode)))
 
+	detailFields := append(stats.FieldsFromTags(tags),
+		stats.NewField("UpstreamCluster", common.UpstreamCluster),
+		stats.NewField("RequestMethod", req.RequestMethod),
+		stats.NewField("RequestScheme", req.Scheme),
+		stats.NewField("RequestAuthority", req.Authority),
+		stats.NewField("RequestPort", req.Port),
+		stats.NewField("RequestPath", req.Path),
+		stats.NewField("RequestUserAgent", req.UserAgent),
+		stats.NewField("RequestReferer", req.Referer),
+		stats.NewField("RequestForwardedFor", req.ForwardedFor),
+		stats.NewField("RequestId", req.RequestId),
+		stats.NewField("RequestOriginalPath", req.OriginalPath),
+		stats.NewField("RequestHeadersBytes", req.RequestHeadersBytes),
+		stats.NewField("RequestBodyBytes", req.RequestBodyBytes),
+		stats.NewField("TimeToLastRxByte", common.TimeToLastRxByte),
+		stats.NewField("TimeToFirstUpstreamTxByte", common.TimeToFirstUpstreamTxByte),
+		stats.NewField("TimeToLastUpstreamTxByte", common.TimeToLastUpstreamTxByte),
+		stats.NewField("TimeToFirstUpstreamTxByte", common.TimeToFirstUpstreamRxByte),
+		stats.NewField("TimeToLastUpstreamRxByte", common.TimeToLastUpstreamRxByte),
+		stats.NewField("TimeToFirstDownstreamTxByte", common.TimeToFirstDownstreamTxByte),
+		stats.NewField("TimeToLastDownstreamTxByte", common.TimeToLastDownstreamTxByte),
+		stats.NewField("ResponseCode", fmt.Sprintf("%d", respCode)),
+		stats.NewField("ResponseHeadersBytes", resp.ResponseHeadersBytes),
+		stats.NewField("ResponseBodyBytes", resp.ResponseBodyBytes))
+
+	if common.DownstreamRemoteAddress != nil {
+		detailFields = append(detailFields,
+			stats.NewField("DownstreamRemoteAddress", common.DownstreamRemoteAddress.Address))
+	}
+	if common.DownstreamLocalAddress != nil {
+		detailFields = append(detailFields,
+			stats.NewField("DownstreamLocalAddress", common.DownstreamLocalAddress.Address))
+	}
+	if common.UpstreamRemoteAddress != nil {
+		detailFields = append(detailFields,
+			stats.NewField("UpstreamRemoteAddress", common.UpstreamRemoteAddress.Address))
+	}
+	if common.UpstreamLocalAddress != nil {
+		detailFields = append(detailFields,
+			stats.NewField("UpstreamLocalAddress", common.UpstreamLocalAddress.Address))
+	}
+	if common.TlsProperties != nil {
+		detailFields = append(detailFields,
+			stats.NewField("TlsVersion", common.TlsProperties.TlsVersion),
+			stats.NewField("TlsCipherSuite", common.TlsProperties.TlsCipherSuite),
+			stats.NewField("TlsSniHostname", common.TlsProperties.TlsSniHostname))
+	}
+
+	requestHeaderFields := stats.FieldsFromMap("request.header", req.RequestHeaders)
+	detailFields = append(detailFields, requestHeaderFields...)
+	responseHeaderFields := stats.FieldsFromMap("response.header", resp.ResponseHeaders)
+	detailFields = append(detailFields, responseHeaderFields...)
+
+	if common.Metadata != nil {
+		for k, v := range common.Metadata.FilterMetadata {
+			fieldName := fmt.Sprintf("Metadata_%v", k)
+			detailFields = append(detailFields, stats.NewField(fieldName, v))
+		}
+	}
+
 	if isUpstream {
 		duration := ptr.DurationValue(common.TimeToLastUpstreamRxByte)
 
 		a.stats.Count(statsapi.UpstreamRequests, 1.0, tags...)
 		a.stats.Count(statsapi.UpstreamResponses, 1.0, responseTags...)
 		a.stats.Timing(statsapi.UpstreamLatency, duration, tags...)
-
+		a.stats.Event(statsapi.UpstreamRequests, detailFields...)
 		a.reporter.reportUpstreamLog(req, resp)
 	} else {
 		duration := ptr.DurationValue(common.TimeToLastDownstreamTxByte)
@@ -246,6 +306,7 @@ func (a *als) record(metadata *streamMetadata, entry *envoylog.HTTPAccessLogEntr
 		a.stats.Count(statsapi.Requests, 1.0, tags...)
 		a.stats.Count(statsapi.Responses, 1.0, responseTags...)
 		a.stats.Timing(statsapi.Latency, duration, tags...)
+		a.stats.Event(statsapi.Requests, detailFields...)
 
 		a.reporter.reportAccessLog(req, resp)
 	}

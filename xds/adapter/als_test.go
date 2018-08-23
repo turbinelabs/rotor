@@ -388,10 +388,12 @@ func testStreamAccessLogs(t *testing.T, mode string, setStartTime bool) {
 			mockStats.EXPECT().Count(statsapi.Requests, 1.0, expectedTags...)
 			mockStats.EXPECT().Count(statsapi.Responses, 1.0, expectedResponseTags...)
 			mockStats.EXPECT().Timing(statsapi.Latency, 2*time.Second, expectedTags...)
+			mockStats.EXPECT().Event(statsapi.Requests, gomock.Any())
 		} else {
 			mockStats.EXPECT().Count(statsapi.UpstreamRequests, 1.0, expectedTags...)
 			mockStats.EXPECT().Count(statsapi.UpstreamResponses, 1.0, expectedResponseTags...)
 			mockStats.EXPECT().Timing(statsapi.UpstreamLatency, 1*time.Second, expectedTags...)
+			mockStats.EXPECT().Event(statsapi.UpstreamRequests, gomock.Any())
 		}
 
 		err := als.StreamAccessLogs(mockSrv)
@@ -503,6 +505,7 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 		mockStats.EXPECT().Count(gomock.Any(), gomock.Any(), anyTags...).Times(2)
 		mockStats.EXPECT().Count(gomock.Any(), gomock.Any(), anyRespTags...).Times(2)
 		mockStats.EXPECT().Timing(gomock.Any(), gomock.Any(), anyTags...).Times(2)
+		mockStats.EXPECT().Event(gomock.Any(), gomock.Any()).Times(2)
 
 		err := als.StreamAccessLogs(mockSrv)
 		assert.ErrorContains(t, err, "terminate")
@@ -608,11 +611,13 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 		mockStats.EXPECT().Count(statsapi.Requests, gomock.Any(), anyTags...)
 		mockStats.EXPECT().Count(statsapi.Responses, gomock.Any(), anyRespTags...)
 		mockStats.EXPECT().Timing(statsapi.Latency, gomock.Any(), anyTags...)
+		mockStats.EXPECT().Event(statsapi.Requests, gomock.Any())
 
 		// Second message...
 		mockStats.EXPECT().Count(statsapi.UpstreamRequests, gomock.Any(), anyTags...)
 		mockStats.EXPECT().Count(statsapi.UpstreamResponses, gomock.Any(), anyRespTags...)
 		mockStats.EXPECT().Timing(statsapi.UpstreamLatency, gomock.Any(), anyTags...)
+		mockStats.EXPECT().Event(statsapi.UpstreamRequests, gomock.Any())
 
 		err := als.StreamAccessLogs(mockSrv)
 		assert.ErrorContains(t, err, "terminate")
