@@ -226,7 +226,7 @@ func mkEnvoyVirtualHost(
 		corsPolicy = mkEnvoyCorsPolicy(cleanDomainConfig.Domain.CorsConfig)
 	}
 
-	domains := []string{cleanDomainConfig.Domain.Name}
+	domains := []string{cleanDomainConfig.Domain.Name, cleanDomainConfig.Domain.Addr()}
 	for _, alias := range cleanDomainConfig.Domain.Aliases {
 		domains = append(domains, string(alias))
 	}
