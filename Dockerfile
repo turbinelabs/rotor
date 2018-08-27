@@ -6,8 +6,8 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get upgrade -y
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y git
 
 # install go
-RUN curl -s -L -O https://storage.googleapis.com/golang/go1.10.1.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go1.10.1.linux-amd64.tar.gz
+RUN curl -s -L -O https://storage.googleapis.com/golang/go1.10.3.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.10.3.linux-amd64.tar.gz
 ENV GOPATH /go
 ENV PATH "$PATH:/usr/local/go/bin:$GOPATH/bin"
 
