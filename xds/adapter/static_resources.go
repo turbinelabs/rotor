@@ -68,6 +68,7 @@ type staticResources struct {
 	clusters         []*envoyapi.Cluster
 	clusterTemplate  *envoyapi.Cluster
 	listeners        []*envoyapi.Listener
+	loadAssigments   []*envoyapi.ClusterLoadAssignment
 	conflictBehavior conflictBehavior
 	version          string
 }
@@ -114,9 +115,10 @@ type resFromFlags struct {
 }
 
 type resFromFile struct {
-	Clusters        []*envoyapi.Cluster  `protobuf:"bytes,1,rep,name=clusters,json=clusters" json:"clusters"`
-	ClusterTemplate *envoyapi.Cluster    `protobuf:"bytes,2,rep,name=cluster_template,json=clusterTemplate" json:"cluster_template"`
-	Listeners       []*envoyapi.Listener `protobuf:"bytes,3,rep,name=listeners,json=listeners" json:"listeners"`
+	Clusters        []*envoyapi.Cluster               `protobuf:"bytes,1,rep,name=clusters,json=clusters" json:"clusters"`
+	ClusterTemplate *envoyapi.Cluster                 `protobuf:"bytes,2,rep,name=cluster_template,json=clusterTemplate" json:"cluster_template"`
+	Listeners       []*envoyapi.Listener              `protobuf:"bytes,3,rep,name=listeners,json=listeners" json:"listeners"`
+	LoadAssignments []*envoyapi.ClusterLoadAssignment `protobuf:"bytes,4,rep,name=load_assignments,json=loadAssignments" json:"load_assignments"`
 }
 
 func (m *resFromFile) Reset()         { *m = resFromFile{} }
@@ -194,6 +196,7 @@ func (ff *resFromFlags) Make() (staticResourcesProvider, error) {
 		clusters:         rff.Clusters,
 		clusterTemplate:  rff.ClusterTemplate,
 		listeners:        rff.Listeners,
+		loadAssigments:   rff.LoadAssignments,
 		conflictBehavior: conflictBehavior,
 		version:          string(uuid),
 	}

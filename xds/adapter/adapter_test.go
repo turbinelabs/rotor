@@ -58,7 +58,7 @@ var testCacheSnapshot = cache.Snapshot{
 	Endpoints: cache.Resources{
 		Version: "endpoints-" + poller.FixtureHash,
 		Items: map[string]cache.Resource{
-			"endpoint-1": &envoyapi.ClusterLoadAssignment{
+			"cluster-1": &envoyapi.ClusterLoadAssignment{
 				ClusterName: "cluster-1",
 			},
 		},
@@ -329,6 +329,48 @@ func TestNewSnapshotAdapterStaticListenersOverwrite(t *testing.T) {
 		staticResources: staticResources{
 			listeners: []*envoyapi.Listener{
 				mkTestListener("listener-2", "127.0.0.1", 81),
+			},
+			conflictBehavior: overwriteBehavior,
+		},
+		want: want,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterStaticLoadAssignmentsMerge(t *testing.T) {
+	want := testCacheSnapshot
+	want.Endpoints.Items = map[string]cache.Resource{
+		"cluster-1": &envoyapi.ClusterLoadAssignment{
+			ClusterName: "cluster-1",
+		},
+		"cluster-2": &envoyapi.ClusterLoadAssignment{
+			ClusterName: "cluster-2",
+		},
+	}
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			loadAssigments: []*envoyapi.ClusterLoadAssignment{
+				{
+					ClusterName: "cluster-2",
+				},
+			},
+		},
+		want: want,
+	}.run(t)
+}
+
+func TestNewSnapshotAdapterStaticLoadAssignmentsOverwrite(t *testing.T) {
+	want := testCacheSnapshot
+	want.Endpoints.Items = map[string]cache.Resource{
+		"cluster-2": &envoyapi.ClusterLoadAssignment{
+			ClusterName: "cluster-2",
+		},
+	}
+	newSnapshotAdapterTestCase{
+		staticResources: staticResources{
+			loadAssigments: []*envoyapi.ClusterLoadAssignment{
+				{
+					ClusterName: "cluster-2",
+				},
 			},
 			conflictBehavior: overwriteBehavior,
 		},

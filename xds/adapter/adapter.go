@@ -78,6 +78,15 @@ func newSnapshotAdapter(
 			return cache.Snapshot{}, err
 		}
 
+		if len(staticRes.loadAssigments) > 0 {
+			if staticRes.conflictBehavior == overwriteBehavior {
+				endpoints.Items = map[string]cache.Resource{}
+			}
+			for _, la := range staticRes.loadAssigments {
+				endpoints.Items[la.GetClusterName()] = la
+			}
+		}
+
 		clusters, err := cAdapter.withTemplate(staticRes.clusterTemplate).adapt(objs)
 		if err != nil {
 			return cache.Snapshot{}, err

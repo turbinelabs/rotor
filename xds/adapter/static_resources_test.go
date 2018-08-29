@@ -295,6 +295,28 @@ func TestResFromFlagsMakeJSON(t *testing.T) {
           }
         ]
       }
+    ],
+    "loadAssignments": [
+      {
+        "clusterName": "all-in-one-server",
+        "endpoints": [
+          {
+            "lbEndpoints": [
+              {
+                "endpoint": {
+                  "address": {
+                    "socketAddress": {
+                      "address": "127.0.0.1",
+                      "portValue": 8080
+                    }
+                  }
+                },
+                "healthStatus": "HEALTHY"
+              }
+            ]
+          }
+        ]
+      }
     ]
   }`
 
@@ -314,6 +336,7 @@ func TestResFromFlagsMakeJSON(t *testing.T) {
 		assert.NonNil(t, res.clusterTemplate)
 		assert.Equal(t, len(res.clusters), 1)
 		assert.Equal(t, len(res.listeners), 1)
+		assert.Equal(t, len(res.loadAssigments), 1)
 		assert.Equal(t, res.conflictBehavior, overwriteBehavior)
 	}
 }
@@ -372,7 +395,17 @@ listeners:
                 cluster: all-in-one-client
         http_filters:
         - name: envoy.router
-          config: {}`
+          config: {}
+loadAssignments:
+- clusterName: all-in-one-server
+  endpoints:
+  - lbEndpoints:
+    - endpoint:
+        address:
+          socketAddress:
+            address: 127.0.0.1
+            portValue: 8080
+      healthStatus: HEALTHY`
 	testResFromFlagsMakeYAML(t, yaml)
 	testResFromFlagsMakeYAML(t, "---\n"+yaml)
 }
@@ -394,6 +427,7 @@ func testResFromFlagsMakeYAML(t *testing.T, yaml string) {
 		assert.NonNil(t, res.clusterTemplate)
 		assert.Equal(t, len(res.clusters), 1)
 		assert.Equal(t, len(res.listeners), 1)
+		assert.Equal(t, len(res.loadAssigments), 1)
 		assert.Equal(t, res.conflictBehavior, mergeBehavior)
 	}
 }
