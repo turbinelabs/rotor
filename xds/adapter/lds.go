@@ -472,9 +472,11 @@ func (s lds) mkListener(
 		return nil, err
 	}
 
-	var lfs []envoylistener.ListenerFilter
-	var nonSSLFilterChains []envoylistener.FilterChain
-	var sslFilterChains []envoylistener.FilterChain
+	var (
+		lfs               []envoylistener.ListenerFilter
+		nonSSLFilterChain *envoylistener.FilterChain
+		sslFilterChains   []envoylistener.FilterChain
+	)
 
 	for _, d := range domains {
 		var tlsContext *envoyauth.DownstreamTlsContext
@@ -526,7 +528,7 @@ func (s lds) mkListener(
 					},
 				},
 			})
-		} else if len(nonSSLFilterChains) == 0 {
+		} else if nonSSLFilterChain == nil {
 			httpConnManager, err := s.mkHTTPConnectionManager(proxy.Name, port, tracingConfig)
 			if err != nil {
 				return nil, err
@@ -537,7 +539,7 @@ func (s lds) mkListener(
 				return nil, err
 			}
 
-			nonSSLFilterChains = append(nonSSLFilterChains, envoylistener.FilterChain{
+			nonSSLFilterChain = &envoylistener.FilterChain{
 				FilterChainMatch: &envoylistener.FilterChainMatch{
 					ServerNames: []string{d.Name},
 				},
@@ -547,10 +549,10 @@ func (s lds) mkListener(
 						Config: httpFilter,
 					},
 				},
-			})
+			}
 		} else {
-			nonSSLFilterChains[0].FilterChainMatch.ServerNames = append(
-				nonSSLFilterChains[0].FilterChainMatch.ServerNames,
+			nonSSLFilterChain.FilterChainMatch.ServerNames = append(
+				nonSSLFilterChain.FilterChainMatch.ServerNames,
 				d.Name,
 			)
 		}
@@ -559,19 +561,23 @@ func (s lds) mkListener(
 	// Envoy doesn't allow a FilterChain for non-SSL ServerNames to explicitly
 	// list the ServerNames unless there is also at least one FilterChain
 	// corresponding to an SSL ServerName on the same port.
-	if len(nonSSLFilterChains) > 0 &&
-		len(sslFilterChains) == 0 &&
-		len(nonSSLFilterChains[0].FilterChainMatch.ServerNames) < 2 {
-		nonSSLFilterChains[0].FilterChainMatch.ServerNames = nil
+	if nonSSLFilterChain != nil && len(sslFilterChains) == 0 {
+		nonSSLFilterChain.FilterChainMatch.ServerNames = nil
 	}
 
 	addr := mkEnvoyAddress("0.0.0.0", port)
+
+	var filterChains []envoylistener.FilterChain
+	if nonSSLFilterChain != nil {
+		filterChains = []envoylistener.FilterChain{*nonSSLFilterChain}
+	}
+	filterChains = append(filterChains, sslFilterChains...)
 
 	return &envoyapi.Listener{
 		Name:            name,
 		Address:         *addr,
 		ListenerFilters: lfs,
-		FilterChains:    append(nonSSLFilterChains, sslFilterChains...),
+		FilterChains:    filterChains,
 	}, nil
 }
 

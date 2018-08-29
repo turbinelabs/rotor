@@ -409,9 +409,7 @@ func TestEmptyRequestSeveralDomainsOnePort(t *testing.T) {
 			},
 			FilterChains: []envoylistener.FilterChain{
 				{
-					FilterChainMatch: &envoylistener.FilterChainMatch{
-						ServerNames: []string{"foo.example.com", "bar.example.com"},
-					},
+					FilterChainMatch: &envoylistener.FilterChainMatch{},
 					Filters: []envoylistener.Filter{
 						{
 							Name:   util.HTTPConnectionManager,
