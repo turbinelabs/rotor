@@ -288,7 +288,7 @@ func TestEmptyRequestSeveralDomains(t *testing.T) {
 			FilterChains: []envoylistener.FilterChain{
 				{
 					FilterChainMatch: &envoylistener.FilterChainMatch{
-						SniDomains: []string{"foo.example.com"},
+						ServerNames: []string{"foo.example.com"},
 					},
 					TlsContext: &envoyauth.DownstreamTlsContext{
 						CommonTlsContext: &envoyauth.CommonTlsContext{

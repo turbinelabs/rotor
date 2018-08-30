@@ -198,7 +198,6 @@ func TestStreamAccessLogsIgnoresBadData(t *testing.T) {
 	}
 
 	mockSrv := &mockSrv{[]interface{}{
-
 		// no entries
 		&accesslog.StreamAccessLogsMessage{
 			Identifier: &accesslog.StreamAccessLogsMessage_Identifier{
@@ -330,10 +329,10 @@ func testStreamAccessLogs(t *testing.T, mode string, setStartTime bool) {
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
-										&core.Address_SocketAddress{
+										Address: &core.Address_SocketAddress{
 											SocketAddress: &core.SocketAddress{
 												Address:       "1.2.3.4",
-												PortSpecifier: &core.SocketAddress_PortValue{9999},
+												PortSpecifier: &core.SocketAddress_PortValue{PortValue: 9999},
 											},
 										},
 									},
@@ -352,7 +351,7 @@ func testStreamAccessLogs(t *testing.T, mode string, setStartTime bool) {
 									},
 								},
 								Response: &envoylog.HTTPResponseProperties{
-									ResponseCode: &types.UInt32Value{200},
+									ResponseCode: &types.UInt32Value{Value: 200, XXX_NoUnkeyedLiteral: struct{}{}, XXX_sizecache: 32},
 								},
 							},
 						},
@@ -442,7 +441,7 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
-										&core.Address_SocketAddress{
+										Address: &core.Address_SocketAddress{
 											SocketAddress: &core.SocketAddress{
 												Address:       "1.2.3.4",
 												PortSpecifier: &core.SocketAddress_PortValue{9999},
@@ -454,7 +453,7 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 								},
 								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
 								Response: &envoylog.HTTPResponseProperties{
-									ResponseCode: &types.UInt32Value{200},
+									ResponseCode: &types.UInt32Value{Value: 200, XXX_NoUnkeyedLiteral: struct{}{}, XXX_sizecache: 32},
 								},
 							},
 						},
@@ -471,7 +470,7 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
-										&core.Address_SocketAddress{
+										Address: &core.Address_SocketAddress{
 											SocketAddress: &core.SocketAddress{
 												Address:       "1.2.3.4",
 												PortSpecifier: &core.SocketAddress_PortValue{9999},
@@ -483,7 +482,7 @@ func TestStreamAccessLogsMultipleMessages(t *testing.T) {
 								},
 								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
 								Response: &envoylog.HTTPResponseProperties{
-									ResponseCode: &types.UInt32Value{200},
+									ResponseCode: &types.UInt32Value{Value: 200, XXX_NoUnkeyedLiteral: struct{}{}, XXX_sizecache: 32},
 								},
 							},
 						},
@@ -542,7 +541,7 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
-										&core.Address_SocketAddress{
+										Address: &core.Address_SocketAddress{
 											SocketAddress: &core.SocketAddress{
 												Address:       "1.2.3.4",
 												PortSpecifier: &core.SocketAddress_PortValue{9999},
@@ -554,7 +553,7 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 								},
 								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
 								Response: &envoylog.HTTPResponseProperties{
-									ResponseCode: &types.UInt32Value{200},
+									ResponseCode: &types.UInt32Value{Value: 200, XXX_NoUnkeyedLiteral: struct{}{}, XXX_sizecache: 32},
 								},
 							},
 						},
@@ -574,7 +573,7 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 									StartTime:       ts,
 									UpstreamCluster: "upstream",
 									UpstreamRemoteAddress: &core.Address{
-										&core.Address_SocketAddress{
+										Address: &core.Address_SocketAddress{
 											SocketAddress: &core.SocketAddress{
 												Address:       "1.2.3.4",
 												PortSpecifier: &core.SocketAddress_PortValue{9999},
@@ -586,7 +585,7 @@ func TestStreamAccessLogsMultipleMessagesAndChangingLogName(t *testing.T) {
 								},
 								Request: &envoylog.HTTPRequestProperties{RequestMethod: core.POST},
 								Response: &envoylog.HTTPResponseProperties{
-									ResponseCode: &types.UInt32Value{200},
+									ResponseCode: &types.UInt32Value{Value: 200, XXX_NoUnkeyedLiteral: struct{}{}, XXX_sizecache: 32},
 								},
 							},
 						},
@@ -625,7 +624,7 @@ func TestAddrToString(t *testing.T) {
 	assert.Equal(
 		t,
 		addrToString(&core.Address{
-			&core.Address_Pipe{
+			Address: &core.Address_Pipe{
 				Pipe: &core.Pipe{
 					Path: "blah",
 				},
@@ -636,7 +635,7 @@ func TestAddrToString(t *testing.T) {
 	assert.Equal(
 		t,
 		addrToString(&core.Address{
-			&core.Address_SocketAddress{
+			Address: &core.Address_SocketAddress{
 				SocketAddress: &core.SocketAddress{
 					Address: "2.3.4.5",
 				},
@@ -647,10 +646,10 @@ func TestAddrToString(t *testing.T) {
 	assert.Equal(
 		t,
 		addrToString(&core.Address{
-			&core.Address_SocketAddress{
+			Address: &core.Address_SocketAddress{
 				SocketAddress: &core.SocketAddress{
 					Address:       "2.3.4.5",
-					PortSpecifier: &core.SocketAddress_PortValue{8888},
+					PortSpecifier: &core.SocketAddress_PortValue{PortValue: 8888},
 				},
 			},
 		}),
@@ -659,10 +658,10 @@ func TestAddrToString(t *testing.T) {
 	assert.Equal(
 		t,
 		addrToString(&core.Address{
-			&core.Address_SocketAddress{
+			Address: &core.Address_SocketAddress{
 				SocketAddress: &core.SocketAddress{
 					Address:       "2.3.4.5",
-					PortSpecifier: &core.SocketAddress_NamedPort{"http"},
+					PortSpecifier: &core.SocketAddress_NamedPort{NamedPort: "http"},
 				},
 			},
 		}),

@@ -517,7 +517,7 @@ func (s lds) mkListener(
 		FilterChains: []envoylistener.FilterChain{
 			{
 				FilterChainMatch: &envoylistener.FilterChainMatch{
-					SniDomains: sniDomains,
+					ServerNames: sniDomains,
 				},
 				TlsContext: tlsContext,
 				Filters: []envoylistener.Filter{

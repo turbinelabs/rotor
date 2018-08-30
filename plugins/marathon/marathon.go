@@ -163,8 +163,8 @@ func (r *marathonRunner) Run(cmd *command.Cmd, args []string) command.CmdErr {
 	// Initialize the collector and start updating
 	collector = marathonCollector{
 		marathonCollectorSettings: r.marathonCollectorSettings,
-		client: mclient,
-		filter: filter,
+		client:                    mclient,
+		filter:                    filter,
 	}
 
 	updater.Loop(u, collector.getClusters)

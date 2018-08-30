@@ -198,10 +198,10 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 								StartTime:       ptr.Time(time.Now()),
 								UpstreamCluster: "upstream",
 								UpstreamRemoteAddress: &envoycore.Address{
-									&envoycore.Address_SocketAddress{
+									Address: &envoycore.Address_SocketAddress{
 										SocketAddress: &envoycore.SocketAddress{
 											Address:       "1.2.3.4",
-											PortSpecifier: &envoycore.SocketAddress_PortValue{9999},
+											PortSpecifier: &envoycore.SocketAddress_PortValue{PortValue: 9999},
 										},
 									},
 								},
@@ -218,7 +218,7 @@ func TestXDSLifecycleWithStreamingLogs(t *testing.T) {
 								},
 							},
 							Response: &envoylog.HTTPResponseProperties{
-								ResponseCode: &types.UInt32Value{200},
+								ResponseCode: &types.UInt32Value{Value: 200, XXX_NoUnkeyedLiteral: struct{}{}, XXX_sizecache: 32},
 							},
 						},
 					},
