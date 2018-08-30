@@ -134,9 +134,9 @@ func (s rds) getResourceConfigs(
 
 	var resourceConfigs []rdsResourceConfig
 	for _, rnap := range resourceNamesAndPorts {
-		domainConfigs := []domainConfig{}
+		var domainConfigs []domainConfig
 		for _, domain := range objects.DomainsPerPort(rnap.Port) {
-			routeConfigs := []routeConfig{}
+			var routeConfigs []routeConfig
 			for _, rt := range objects.RoutesPerDomain(domain.DomainKey) {
 				sharedRules := objects.SharedRulesFromKey(rt.SharedRulesKey)
 				// fill in default retry policy
@@ -200,7 +200,7 @@ func (s rds) mkEnvoyRouteConfig(
 	domainConfigs []domainConfig,
 	objects *poller.Objects,
 ) (*envoyapi.RouteConfiguration, error) {
-	virtualHosts := []envoyroute.VirtualHost{}
+	var virtualHosts []envoyroute.VirtualHost
 	for _, domainConfig := range domainConfigs {
 		virtualHost, err := mkEnvoyVirtualHost(domainConfig, objects)
 		if err != nil {
@@ -277,7 +277,7 @@ func resolveTLSRequirement(
 	domainCfg domainConfig,
 ) (envoyroute.VirtualHost_TlsRequirementType, domainConfig) {
 	shouldRedirectHTTP := false
-	cleanRedirects := []tbnapi.Redirect{}
+	var cleanRedirects []tbnapi.Redirect
 	for _, rd := range domainCfg.Domain.Redirects {
 		if isHTTPSRedirect(domainCfg.Domain.Name, rd) {
 			shouldRedirectHTTP = true
@@ -322,7 +322,7 @@ func mkEnvoyRoutes(
 // this method ensures we provide envoy with a valid route by stripping
 // capture groups and resolving nginx variables.
 func tbnRedirectToEnvoyRoutes(domain tbnapi.Domain) []envoyroute.Route {
-	routes := []envoyroute.Route{}
+	var routes []envoyroute.Route
 	for _, redirect := range domain.Redirects {
 		url, err := url.Parse(redirect.To)
 		if err != nil {
@@ -394,7 +394,7 @@ func toEnvoyHeaderMatcher(
 	domain tbnapi.Domain,
 	redirect tbnapi.Redirect,
 ) []*envoyroute.HeaderMatcher {
-	matchers := []*envoyroute.HeaderMatcher{}
+	var matchers []*envoyroute.HeaderMatcher
 	for _, headerConstraint := range redirect.HeaderConstraints {
 		headerValue := headerConstraint.Value
 
@@ -433,7 +433,7 @@ func tbnToEnvoyRoutes(
 	domainConfig domainConfig,
 	objects *poller.Objects,
 ) ([]envoyroute.Route, error) {
-	routes := []envoyroute.Route{}
+	var routes []envoyroute.Route
 
 	for _, routeConfig := range domainConfig.Routes {
 		re := routeExploder{domainConfig, routeConfig, objects.ClusterFromKey}
@@ -465,29 +465,6 @@ func tbnToEnvoyRoutes(
 					ClusterSpecifier: &envoyroute.RouteAction_WeightedClusters{
 						WeightedClusters: weightedCluster,
 					},
-					RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-						{
-							Header: &envoycore.HeaderValue{
-								Key:   headerRouteKey,
-								Value: valueOrDefault(string(routeConfig.Route.RouteKey)),
-							},
-							Append: boolValue(false),
-						},
-						{
-							Header: &envoycore.HeaderValue{
-								Key:   headerRuleKey,
-								Value: valueOrDefault(string(rv.RuleKey)),
-							},
-							Append: boolValue(false),
-						},
-						{
-							Header: &envoycore.HeaderValue{
-								Key:   headerSharedRulesKey,
-								Value: valueOrDefault(rv.SharedRulesName),
-							},
-							Append: boolValue(false),
-						},
-					},
 					RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 						RetryOn:       rdsRetryOn,
 						NumRetries:    uint32Value(uint32(rp.NumRetries)),
@@ -497,7 +474,31 @@ func tbnToEnvoyRoutes(
 				},
 			}
 
-			routes = append(routes, envoyroute.Route{Match: match, Action: action})
+			requestHeadersToAdd := []*envoycore.HeaderValueOption{
+				{
+					Header: &envoycore.HeaderValue{
+						Key:   headerRouteKey,
+						Value: valueOrDefault(string(routeConfig.Route.RouteKey)),
+					},
+					Append: boolValue(false),
+				},
+				{
+					Header: &envoycore.HeaderValue{
+						Key:   headerRuleKey,
+						Value: valueOrDefault(string(rv.RuleKey)),
+					},
+					Append: boolValue(false),
+				},
+				{
+					Header: &envoycore.HeaderValue{
+						Key:   headerSharedRulesKey,
+						Value: valueOrDefault(rv.SharedRulesName),
+					},
+					Append: boolValue(false),
+				},
+			}
+
+			routes = append(routes, envoyroute.Route{Match: match, Action: action, RequestHeadersToAdd: requestHeadersToAdd})
 		}
 	}
 
@@ -595,7 +596,7 @@ func mkEnvoyWeightedCluster(
 	responseData tbnapi.ResponseData,
 ) (*envoyroute.WeightedCluster, error) {
 	totalWeight := uint32(0)
-	weightedClusters := []*envoyroute.WeightedCluster_ClusterWeight{}
+	var weightedClusters []*envoyroute.WeightedCluster_ClusterWeight
 	for _, cc := range allConstraints.Light {
 		// Not all clusters will be present in the enumeration of
 		// wildcard constraints to concrete cluster constraints. Also,
@@ -644,7 +645,7 @@ func mkEnvoyWeightedCluster(
 // based matches with a fun regex. Handles request method matches by
 // matching against the :method pseudo-header.
 func mkEnvoyHeaderMatchers(matches []requestMatch, methods []string) []*envoyroute.HeaderMatcher {
-	matchers := []*envoyroute.HeaderMatcher{}
+	var matchers []*envoyroute.HeaderMatcher
 
 	if len(methods) > 0 {
 		// Match behavior of the old nginx implementation.
@@ -692,7 +693,7 @@ func mkEnvoyHeaderMatchers(matches []requestMatch, methods []string) []*envoyrou
 			headerMatcher := &envoyroute.HeaderMatcher{
 				Name: cookieHeaderName,
 				HeaderMatchSpecifier: &envoyroute.HeaderMatcher_RegexMatch{
-					fmt.Sprintf(
+					RegexMatch: fmt.Sprintf(
 						wildcardCookieMatchTemplate,
 						regexp.QuoteMeta(hmm.metadatum.Key),
 					),
@@ -750,7 +751,7 @@ func mkEnvoyHeaderMatchers(matches []requestMatch, methods []string) []*envoyrou
 func mkEnvoyQueryParamMatchers(
 	matches []requestMatch,
 ) []*envoyroute.QueryParameterMatcher {
-	matchers := []*envoyroute.QueryParameterMatcher{}
+	var matchers []*envoyroute.QueryParameterMatcher
 	for _, qpm := range matches {
 		switch {
 		case qpm.matchKind == tbnapi.QueryMatchKind:

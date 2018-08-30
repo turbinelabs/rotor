@@ -215,7 +215,7 @@ func TestUpdaterFromFlagsValidateXDSErr(t *testing.T) {
 func TestUpdaterFromFlagsValidateApiKeyNoZoneName(t *testing.T) {
 	err := errors.New("--api.zone-name must be specified if --api.key is specified")
 	uffValidateTestCase{
-		apiKey: "apikey",
+		apiKey:                   "apikey",
 		exitBeforeClientValidate: true,
 		wantErr:                  err,
 	}.run(t)

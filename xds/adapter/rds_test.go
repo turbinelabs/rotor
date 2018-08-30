@@ -50,7 +50,7 @@ func checkRouteConfigurations(
 ) {
 	assert.Equal(t, len(actual.Items), len(expected))
 
-	actualConfigs := []envoyapi.RouteConfiguration{}
+	var actualConfigs []envoyapi.RouteConfiguration
 	for _, resource := range actual.Items {
 		if route, ok := resource.(*envoyapi.RouteConfiguration); !ok {
 			assert.Failed(t, "could not cast resource to RouteConfiguration")
@@ -348,35 +348,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(100),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R1",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "R1R0",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(rdsDefaultNumRetries),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R1",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "R1R0",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -441,35 +441,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(1),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R1",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "R1R0",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(rdsDefaultNumRetries),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R1",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "R1R0",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -533,35 +533,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(100),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R1",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "R1R1",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(rdsDefaultNumRetries),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R1",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "R1R1",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -626,35 +626,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(100),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R1",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "R1R2",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(rdsDefaultNumRetries),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R1",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "R1R2",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -733,35 +733,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(102),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R1",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "SRK-1",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(rdsDefaultNumRetries),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R1",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "SRK-1",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -804,35 +804,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(1),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R0",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "SRK-0",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(34 * time.Millisecond),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(12),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R0",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "SRK-0",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -936,35 +936,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(100),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R2",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "R2R0",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(rdsDefaultNumRetries),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R2",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "R2R0",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -1092,29 +1092,6 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(83),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R2",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "SRK2-R2R0",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "SRK-2",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
@@ -1123,7 +1100,29 @@ func TestAllPortsRequest(t *testing.T) {
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
 								},
 							},
-						},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R2",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "SRK2-R2R0",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "SRK-2",
+									},
+									Append: boolValue(false),
+								},
+							}},
 						{
 							Match: envoyroute.RouteMatch{
 								PathSpecifier: &envoyroute.RouteMatch_Prefix{
@@ -1217,35 +1216,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(101),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R2",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "SRK-2",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(rdsTestDefaultTimeout),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(rdsDefaultNumRetries),
 									},
 									Timeout: ptr.Duration(rdsTestDefaultTimeout),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R2",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "SRK-2",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
@@ -1325,35 +1324,35 @@ func TestAllPortsRequest(t *testing.T) {
 											TotalWeight: uint32Value(1),
 										},
 									},
-									RequestHeadersToAdd: []*envoycore.HeaderValueOption{
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRouteKey,
-												Value: "R3",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerRuleKey,
-												Value: "DEFAULT",
-											},
-											Append: boolValue(false),
-										},
-										{
-											Header: &envoycore.HeaderValue{
-												Key:   headerSharedRulesKey,
-												Value: "SRK-0",
-											},
-											Append: boolValue(false),
-										},
-									},
 									RetryPolicy: &envoyroute.RouteAction_RetryPolicy{
 										PerTryTimeout: ptr.Duration(500 * time.Millisecond),
 										RetryOn:       rdsRetryOn,
 										NumRetries:    uint32Value(5),
 									},
 									Timeout: ptr.Duration(1 * time.Second),
+								},
+							},
+							RequestHeadersToAdd: []*envoycore.HeaderValueOption{
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRouteKey,
+										Value: "R3",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerRuleKey,
+										Value: "DEFAULT",
+									},
+									Append: boolValue(false),
+								},
+								{
+									Header: &envoycore.HeaderValue{
+										Key:   headerSharedRulesKey,
+										Value: "SRK-0",
+									},
+									Append: boolValue(false),
 								},
 							},
 						},
