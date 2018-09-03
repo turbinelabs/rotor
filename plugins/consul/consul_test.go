@@ -86,11 +86,10 @@ func (s stubGetServiceDetail) addCall(svc string, detail consulServiceDetail, er
 }
 
 func (s *stubGetServiceDetail) Fn() getConsulServiceDetailFn {
-	return func(client catalogInterface, dc, svcName, svcTag string) (consulServiceDetail, error) {
+	return func(client catalogInterface, dc, svcName string) (consulServiceDetail, error) {
 		s.calls++
 		assert.NonNil(s.t, client)
 		assert.Equal(s.t, dc, s.dc)
-		assert.Equal(s.t, svcTag, s.svcTag)
 
 		if s.svcCalls[svcName] {
 			assert.Failed(s.t, fmt.Sprintf("already requested service details for %s", svcName))
@@ -469,6 +468,24 @@ func testMkClustersWithDelimeter(t *testing.T, delim string) {
 				"svc-c",
 				[]consulServiceNode{},
 			},
+			"example.com": {
+				"svc-d",
+				[]consulServiceNode{
+					{
+						id:      "n4",
+						address: "ip4",
+						port:    4,
+						tags: tags{
+							fmt.Sprintf("bn4t1%s", delim),
+							fmt.Sprintf("bn4t2%s", delim),
+							fmt.Sprintf("%s%sexample.com", tag, delim),
+							tag,
+						},
+						nodeMeta:    md{"l": "m", "n": "o"},
+						serviceMeta: md{"t": "u", "v": "w"},
+					},
+				},
+			},
 		}
 
 		pass   = consulapi.HealthPassing
@@ -482,6 +499,9 @@ func testMkClustersWithDelimeter(t *testing.T, delim string) {
 				hc("n3", "n3-c1", pass, "svc-a"),
 				hc("n3", "n3-c2", "whee", "svc-b"),
 				hc("n3", "n3-c3", pass, ""),
+			},
+			"n4": {
+				hc("n4", "n4-c1", pass, "example.com"),
 			},
 		}
 
@@ -549,13 +569,35 @@ func testMkClustersWithDelimeter(t *testing.T, delim string) {
 					},
 				},
 			},
-
+			{
+				Name: "example.com",
+				Instances: api.Instances{
+					{
+						Host: "ip4",
+						Port: 4,
+						Metadata: api.MetadataFromMap(
+							md{
+								"node-id":                  "n4",
+								"tag:bn4t1":                "",
+								"tag:bn4t2":                "",
+								fmt.Sprintf("tag:%s", tag): "example.com",
+								"node:l":                   "m",
+								"node:n":                   "o",
+								"check:n4-c1":              pass,
+								"node-health":              pass,
+								"t":                        "u",
+								"v":                        "w",
+							},
+						),
+					},
+				},
+			},
 			{Name: "svc-c"},
 		}
 	)
 
 	got := getMkClusterFn(delimiterTagParser(delim))(tag, details, health)
-	assert.Equal(t, len(got), 3)
+	assert.Equal(t, len(got), 4)
 
 	gotm := got.GroupBy(func(c api.Cluster) string { return c.Name })
 	for _, c := range want {
@@ -764,7 +806,7 @@ func TestGetConsulServiceDetailError(t *testing.T) {
 
 	catalog := newMockCatalogInterface(ctrl)
 	svcname := "test-svc"
-	svctag := "tagtagtag"
+	svctag := ""
 
 	svcs := []*consulapi.CatalogService{
 		{Node: "nodeid", Address: "bob", ServicePort: 3},
@@ -772,7 +814,7 @@ func TestGetConsulServiceDetailError(t *testing.T) {
 
 	catalog.EXPECT().Service(svcname, svctag, opts).Return(svcs, nil, err)
 
-	got, gotErr := getConsulServiceDetail(catalog, testdc, svcname, svctag)
+	got, gotErr := getConsulServiceDetail(catalog, testdc, svcname)
 	assert.DeepEqual(t, gotErr, err)
 	assert.DeepEqual(t, got, consulServiceDetail{})
 }
@@ -783,7 +825,7 @@ func TestGetConsulServiceDetail(t *testing.T) {
 
 	catalog := newMockCatalogInterface(ctrl)
 	svcname := "test-svc"
-	svctag := "tagtagtag"
+	svctag := ""
 
 	svcs := []*consulapi.CatalogService{
 		{Node: "nodeid", Address: "bob", ServicePort: 3},
@@ -791,7 +833,7 @@ func TestGetConsulServiceDetail(t *testing.T) {
 
 	catalog.EXPECT().Service(svcname, svctag, opts).Return(svcs, nil, nil)
 
-	got, gotErr := getConsulServiceDetail(catalog, testdc, svcname, svctag)
+	got, gotErr := getConsulServiceDetail(catalog, testdc, svcname)
 	assert.Nil(t, gotErr)
 	assert.DeepEqual(t, got, serviceDetailFromSvcs(svcname, svcs))
 }

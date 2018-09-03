@@ -20,16 +20,16 @@ package consul
 
 import (
 	"fmt"
+	"strings"
 
 	consulapi "github.com/hashicorp/consul/api"
-
 	"github.com/turbinelabs/api"
 	"github.com/turbinelabs/cli/command"
 	"github.com/turbinelabs/nonstdlib/arrays/indexof"
 	tbnflag "github.com/turbinelabs/nonstdlib/flag"
 	"github.com/turbinelabs/nonstdlib/flag/usage"
 	"github.com/turbinelabs/nonstdlib/log/console"
-	"github.com/turbinelabs/nonstdlib/strings"
+	tbnstrings "github.com/turbinelabs/nonstdlib/strings"
 	"github.com/turbinelabs/rotor"
 	"github.com/turbinelabs/rotor/updater"
 )
@@ -184,7 +184,9 @@ func Cmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
 		&runner.tbnServiceTag,
 		"cluster-tag",
 		defaultClusterTag,
-		"The tag used to indicate that a service should be imported as a Cluster.")
+		"The tag used to indicate that a service should be imported as a Cluster. "+
+			"If used in conjunction with 'tag-delimiter' its value can be used to override "+
+			"the cluster name from the default value of the name of the service in consul.")
 
 	flags.StringVar(
 		&runner.tagDelimiter,
@@ -296,7 +298,7 @@ func consulGetClusters(
 	// get nodes for a service
 	svcDetails := map[string]consulServiceDetail{}
 	for svcID := range svcs {
-		detail, err := getServiceDetail(catalogAPI, dc, svcID, svcTag)
+		detail, err := getServiceDetail(catalogAPI, dc, svcID)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"Skipping collection. Error retrieving nodes for service %s: %s",
@@ -347,7 +349,7 @@ func passThroughTagParser(t string) (string, string, error) {
 
 func delimiterTagParser(delim string) tagParser {
 	return func(t string) (string, string, error) {
-		k, v := strings.Split2(t, delim)
+		k, v := tbnstrings.Split2(t, delim)
 		if k == "" {
 			return "", "", fmt.Errorf("Invalid delimiter position for tag \"%s\"", t)
 		}
@@ -392,6 +394,10 @@ func getMkClusterFn(parseTag tagParser) mkClusterFn {
 							err,
 						)
 						continue
+					}
+
+					if k == fmt.Sprintf("tag:%s", svcTag) {
+						c.Name = v
 					}
 
 					metadata[k] = v
@@ -458,11 +464,12 @@ type serviceListing map[string][]string
 func (sl serviceListing) FindWithTag(t string) serviceListing {
 	results := serviceListing{}
 	for k, v := range sl {
-		if indexof.String(v, t) != -1 {
-			results[k] = v
+		for _, tag := range v {
+			if strings.HasPrefix(tag, t) {
+				results[k] = v
+			}
 		}
 	}
-
 	return results
 }
 
@@ -518,7 +525,6 @@ func serviceDetailFromSvcs(name string, svcs []*consulapi.CatalogService) consul
 
 		result.nodes = append(result.nodes, n)
 	}
-
 	return result
 }
 
@@ -527,16 +533,15 @@ func serviceDetailFromSvcs(name string, svcs []*consulapi.CatalogService) consul
 // a condensed version of the Consul view of the service including a list of
 // nodes that are part of it.
 type getConsulServiceDetailFn func(
-	client catalogInterface, dc, svcName, svcTag string) (consulServiceDetail, error)
+	client catalogInterface, dc, svcName string) (consulServiceDetail, error)
 
 func getConsulServiceDetail(
 	client catalogInterface,
 	dc,
-	svcName,
-	svcTag string,
+	svcName string,
 ) (consulServiceDetail, error) {
 	opts := &consulapi.QueryOptions{Datacenter: dc, RequireConsistent: true}
-	svcs, _, err := client.Service(svcName, svcTag, opts)
+	svcs, _, err := client.Service(svcName, "", opts)
 	if err != nil {
 		return consulServiceDetail{}, err
 	}
