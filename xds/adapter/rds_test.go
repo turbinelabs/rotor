@@ -225,8 +225,15 @@ func TestAllPortsRequest(t *testing.T) {
 			Name: "main-test-proxy:8443",
 			VirtualHosts: []envoyroute.VirtualHost{
 				{
-					Name:       "foo.example.com-8443",
-					Domains:    []string{"foo.example.com", "*.example.io", "localhost"},
+					Name: "foo.example.com-8443",
+					Domains: []string{
+						"foo.example.com",
+						"foo.example.com:8443",
+						"*.example.io",
+						"*.example.io:8443",
+						"localhost",
+						"localhost:8443",
+					},
 					RequireTls: envoyroute.VirtualHost_ALL,
 					RequestHeadersToAdd: []*envoycore.HeaderValueOption{
 						{
@@ -914,7 +921,7 @@ func TestAllPortsRequest(t *testing.T) {
 			VirtualHosts: []envoyroute.VirtualHost{
 				{
 					Name:    "bar.example.com-8080",
-					Domains: []string{"bar.example.com"},
+					Domains: []string{"bar.example.com", "bar.example.com:8080"},
 					RequestHeadersToAdd: []*envoycore.HeaderValueOption{
 						{
 							Header: &envoycore.HeaderValue{
@@ -1313,7 +1320,7 @@ func TestAllPortsRequest(t *testing.T) {
 				},
 				{
 					Name:       "baz.example.com-8080",
-					Domains:    []string{"baz.example.com"},
+					Domains:    []string{"baz.example.com", "baz.example.com:8080"},
 					RequireTls: envoyroute.VirtualHost_NONE,
 					RequestHeadersToAdd: []*envoycore.HeaderValueOption{
 						{

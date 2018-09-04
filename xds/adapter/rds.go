@@ -228,7 +228,11 @@ func mkEnvoyVirtualHost(
 
 	domains := []string{cleanDomainConfig.Domain.Name, cleanDomainConfig.Domain.Addr()}
 	for _, alias := range cleanDomainConfig.Domain.Aliases {
-		domains = append(domains, string(alias))
+		domains = append(
+			domains,
+			string(alias),
+			fmt.Sprintf("%s:%d", alias, cleanDomainConfig.Domain.Port),
+		)
 	}
 
 	routes, err := mkEnvoyRoutes(cleanDomainConfig, objects)
