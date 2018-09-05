@@ -20,9 +20,97 @@ if [ -f /usr/local/bin/envcheck.sh ]; then
   rewrite_vars TBNCOLLECT_ ROTOR_
 fi
 
-if [[ -z "${ROTOR_CMD}" ]]; then
-  echo "error: required environment variable ROTOR_CMD not set" >/dev/stderr
-  exit 1
+require_vars ROTOR_CMD
+
+# eg ROTOR_LOCAL_CLUSTERS=all-in-one-server:8080,all-in-one-client:8083
+if [[ -n "$ROTOR_LOCAL_CLUSTERS" ]]; then
+  if [[ -n "$ROTOR_XDS_STATIC_RESOURCES_FILENAME" ]]; then
+    echo "cannot specify both ROTOR_XDS_STATIC_RESOURCES_FILENAME and ROTOR_LOCAL_CLUSTERS"
+    exit 1
+  fi
+
+  export ROTOR_XDS_STATIC_RESOURCES_FILENAME=/etc/envoy/local_clusters.json
+  export ROTOR_XDS_STATIC_RESOURCES_FORMAT=json
+
+  IFS=',' read -ra PAIRS <<< "${ROTOR_LOCAL_CLUSTERS}"
+  for PAIR in "${PAIRS[@]}"; do
+    CLUSTER=$(echo $PAIR | cut -d ':' -f1)
+    PORT=$(echo $PAIR | cut -d ':' -f2)
+
+    echo "routing $CLUSTER to localhost:$PORT"
+
+    if [[ -z "$CLUSTER" ]] || [[ -z "$PORT" ]]; then
+      echo "malformed cluster:port pair: $PAIR"
+      exit 1
+    fi
+
+    CLUSTERS=$(cat << EOF
+$CLUSTERS
+    {
+      "name": "$CLUSTER",
+      "type": "EDS",
+      "edsClusterConfig": {
+        "edsConfig": {
+          "apiConfigSource": {
+            "apiType": "GRPC",
+            "grpcServices": [
+              {
+                "envoyGrpc": {
+                  "clusterName": "tbn-xds"
+                }
+              }
+            ],
+            "refreshDelay": "30s"
+          }
+        },
+        "serviceName": "$CLUSTER"
+      },
+      "connectTimeout": "10s",
+      "lbPolicy": "LEAST_REQUEST",
+      "lbSubsetConfig": {
+        "fallbackPolicy": "ANY_ENDPOINT"
+      }
+    },
+EOF
+)
+
+      LOAD_ASSIGNMENTS=$(cat << EOF
+$LOAD_ASSIGNMENTS
+    {
+      "clusterName": "$CLUSTER",
+      "endpoints": [
+        {
+          "lbEndpoints": [
+            {
+              "endpoint": {
+                "address": {
+                  "socketAddress": {
+                    "address": "127.0.0.1",
+                    "portValue": ${PORT}
+                  }
+                }
+              },
+              "healthStatus": "HEALTHY"
+            }
+          ]
+        }
+      ]
+    },
+EOF
+)
+
+  done
+
+  (cat << EOF
+{
+  "clusters": [${CLUSTERS%,}
+  ],
+  "loadAssignments": [${LOAD_ASSIGNMENTS%,}
+  ]
+}
+EOF
+) > "$ROTOR_XDS_STATIC_RESOURCES_FILENAME"
+
 fi
 
-/usr/local/bin/rotor ${ROTOR_CMD}
+/usr/local/bin/rotor "${ROTOR_CMD}"
