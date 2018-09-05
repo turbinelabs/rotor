@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"strings"
 	"time"
 
 	k8sapiv1 "k8s.io/api/core/v1"
@@ -67,8 +66,8 @@ and ready for inclusion in the API cluster's instance list. Each container is
 examined for ports. The first TCP port found is used as the API instance's port
 unless a port name is specified (see -port-name), in which case the first port
 with that name becomes the API instance's port. Pods with no container port are
-ignored. All pod labels and annotations (except for the cluster label) are
-attached as instance metadata.`
+ignored. All pod labels (except for the cluster label) are attached as instance
+metadata.`
 )
 
 func Cmd(updaterFlags rotor.UpdaterFromFlags) *command.Cmd {
@@ -219,7 +218,6 @@ func (c *kubernetesCollector) getClusters(client k8stypedv1.PodInterface) (api.C
 func (c *kubernetesCollector) makeInstance(pod k8sapiv1.Pod, port int) (string, api.Instance) {
 	host := pod.Status.PodIP
 	lbls := pod.GetLabels()
-	ans := pod.GetAnnotations()
 
 	clusterName := lbls[c.clusterNameLabel]
 	if clusterName == "" {
@@ -239,12 +237,6 @@ func (c *kubernetesCollector) makeInstance(pod k8sapiv1.Pod, port int) (string, 
 
 	for key, value := range lbls {
 		if key != c.clusterNameLabel {
-			metadata = append(metadata, api.Metadatum{Key: key, Value: value})
-		}
-	}
-
-	for key, value := range ans {
-		if !strings.HasPrefix(key, k8sMetadataPrefix) {
 			metadata = append(metadata, api.Metadatum{Key: key, Value: value})
 		}
 	}

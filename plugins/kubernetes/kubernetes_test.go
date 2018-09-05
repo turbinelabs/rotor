@@ -537,39 +537,6 @@ func TestKubernetesMakeInstanceWithLabels(t *testing.T) {
 	assert.HasSameElements(t, instance.Metadata, expectedInstance.Metadata)
 }
 
-func TestKubernetesMakeInstanceWithAnnotations(t *testing.T) {
-	collector := kubernetesCollector{
-		k8sCollectorSettings: k8sCollectorSettings{clusterNameLabel: "cname"},
-	}
-	clusterName, instance := collector.makeInstance(
-		k8sapiv1.Pod{
-			Status: k8sapiv1.PodStatus{PodIP: "pod ip"},
-			ObjectMeta: k8smetav1.ObjectMeta{
-				Labels: map[string]string{"cname": "kluster"},
-				Annotations: map[string]string{
-					"app":               "www",
-					"stage":             "production",
-					"kubernetes.io/foo": "bar",
-				},
-			},
-		},
-		8000,
-	)
-	assert.Equal(t, clusterName, "kluster")
-
-	expectedInstance := api.Instance{
-		Host: "pod ip",
-		Port: 8000,
-		Metadata: api.Metadata{
-			{Key: "app", Value: "www"},
-			{Key: "stage", Value: "production"},
-		},
-	}
-	assert.Equal(t, instance.Host, expectedInstance.Host)
-	assert.Equal(t, instance.Port, expectedInstance.Port)
-	assert.HasSameElements(t, instance.Metadata, expectedInstance.Metadata)
-}
-
 func TestKubernetesMakeInstanceWithExtras(t *testing.T) {
 	collector := kubernetesCollector{
 		k8sCollectorSettings: k8sCollectorSettings{clusterNameLabel: "cname"},
@@ -597,7 +564,6 @@ func TestKubernetesMakeInstanceWithExtras(t *testing.T) {
 		Port: 8000,
 		Metadata: api.Metadata{
 			{Key: "label key", Value: "label value"},
-			{Key: "anno key", Value: "anno value"},
 			{Key: NodeNameLabel, Value: "node name"},
 			{Key: HostIPLabel, Value: "host ip"},
 		},
