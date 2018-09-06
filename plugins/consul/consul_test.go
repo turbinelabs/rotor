@@ -468,7 +468,7 @@ func testMkClustersWithDelimeter(t *testing.T, delim string) {
 				"svc-c",
 				[]consulServiceNode{},
 			},
-			"example.com": {
+			"not-example.com": {
 				"svc-d",
 				[]consulServiceNode{
 					{
@@ -501,7 +501,7 @@ func testMkClustersWithDelimeter(t *testing.T, delim string) {
 				hc("n3", "n3-c3", pass, ""),
 			},
 			"n4": {
-				hc("n4", "n4-c1", pass, "example.com"),
+				hc("n4", "n4-c1", pass, "not-example.com"),
 			},
 		}
 
@@ -577,16 +577,16 @@ func testMkClustersWithDelimeter(t *testing.T, delim string) {
 						Port: 4,
 						Metadata: api.MetadataFromMap(
 							md{
-								"node-id":                  "n4",
-								"tag:bn4t1":                "",
-								"tag:bn4t2":                "",
-								fmt.Sprintf("tag:%s", tag): "example.com",
-								"node:l":                   "m",
-								"node:n":                   "o",
-								"check:n4-c1":              pass,
-								"node-health":              pass,
-								"t":                        "u",
-								"v":                        "w",
+								"node-id":        "n4",
+								"tag:bn4t1":      "",
+								"tag:bn4t2":      "",
+								"node:l":         "m",
+								"node:n":         "o",
+								"check:n4-c1":    pass,
+								"node-health":    pass,
+								"t":              "u",
+								"v":              "w",
+								"consul:service": "not-example.com",
 							},
 						),
 					},

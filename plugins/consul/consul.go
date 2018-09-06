@@ -398,6 +398,11 @@ func getMkClusterFn(parseTag tagParser) mkClusterFn {
 
 					if k == fmt.Sprintf("tag:%s", svcTag) {
 						c.Name = v
+						// preserve previous service if different
+						if svc != v {
+							metadata["consul:service"] = svc
+						}
+						continue
 					}
 
 					metadata[k] = v
