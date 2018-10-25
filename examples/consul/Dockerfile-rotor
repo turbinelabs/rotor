@@ -1,4 +1,4 @@
-FROM turbinelabs/rotor:0.18.2
+FROM turbinelabs/rotor:0.19.0
 
 ENV ROTOR_CMD=consul
 ENV ROTOR_CONSUL_DC=dc1

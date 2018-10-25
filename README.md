@@ -118,7 +118,7 @@ depends on your service discovery registry. To see the flags available for your
 SD, run:
 
 ```console
-docker run turbinelabs/rotor:0.18.2 rotor <platform> --help
+docker run turbinelabs/rotor:0.19.0 rotor <platform> --help
 ```
 
 where `<platform>` is one of: aws, ecs, consul, file, kubernetes, or marathon.
@@ -158,7 +158,7 @@ docker run -d \
   -e "ROTOR_CMD=consul" \
   -e "ROTOR_CONSUL_DC=<your datacenter>" \
   -e "ROTOR_CONSUL_HOSTPORT=<consul ip address>:8500" \
-  turbinelabs/rotor:0.18.2
+  turbinelabs/rotor:0.19.0
 ```
 
 To mark a `Service` for Rotor, add a tag called `tbn-cluster`. See
@@ -176,7 +176,7 @@ docker run -d \
   -e 'ROTOR_AWS_VPC_ID=<your vpc id>' \
   -e 'ROTOR_CMD=aws' \
   -p 50000:50000 \
-  turbinelabs/rotor:0.18.2
+  turbinelabs/rotor:0.19.0
 ```
 
 You need to tag instances with the service name and port it exposes
@@ -204,7 +204,7 @@ docker run -d \
   -e 'ROTOR_AWS_AWS_SECRET_ACCESS_KEY=<your secret access key>' \
   -e 'ROTOR_CMD=ecs' \
   -p 50000:50000 \
-  turbinelabs/rotor:0.18.2
+  turbinelabs/rotor:0.19.0
 ```
 You can run this inside or outside of ECS itself, as long as your
 Envoy instances have access to the container on port 50000.
@@ -232,7 +232,7 @@ Rotor runs as an app inside DC/OS. Save this as `rotor.json`:
   "container": {
     "type": "DOCKER",
     "docker": {
-      "image": "turbinelabs/rotor:0.18.2",
+      "image": "turbinelabs/rotor:0.19.0",
       "forcePullImage": true
     }
   },
@@ -268,7 +268,7 @@ docker run -d \
   -e 'ROTOR_FILE_FORMAT=yaml' \
   -e 'ROTOR_FILE_FILENAME=/path/to/file/in/container' \
   -p 50000:50000 \
-  turbinelabs/rotor:0.18.2
+  turbinelabs/rotor:0.19.0
 ```
 
 The format defines clusters and the associated instances:
@@ -301,7 +301,7 @@ docker run -d \
   -e 'ENVOY_XDS_PORT=50000' \
   -p 9999:9999 \
   -p 80:80 \
-  turbinelabs/envoy-simple:0.18.2
+  turbinelabs/envoy-simple:0.19.0
 ```
 
 You may have to modify the host and port, depending on where you have Rotor
@@ -330,13 +330,13 @@ all your services.
 ## Configuration
 
 Global flags for Rotor can be listed with
-`docker run turbinelabs/rotor:0.18.2 rotor --help`. Global flags can be be
+`docker run turbinelabs/rotor:0.19.0 rotor --help`. Global flags can be be
 passed via upper-case, underscore-delimited environment variables prefixed
 with `ROTOR_`, with all non-alpha characters converted to underscores. For
 example, `--some-flag` becomes `ROTOR_SOME_FLAG`.
 
 Per-platform flags can be listed with
-`docker run turbinelabs/rotor:0.18.2 rotor <platform> --help`. Per-platform
+`docker run turbinelabs/rotor:0.19.0 rotor <platform> --help`. Per-platform
 flags can be similarly passed as environment variables, prefixed with
 `ROTOR_<PLATFORM>`. For example `--some-flag` for the kubernetes platform
 becomes `ROTOR_KUBERNETES_SOME_FLAG`.
